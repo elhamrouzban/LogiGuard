@@ -2,7 +2,7 @@
 
 ## Purpose
 This document is the operating manual for the capstone. It should let any team member—or future you—understand:
-- what the project is trying to achieve,
+-  what the project is trying to achieve,
 - what has already been done,
 - what is currently in progress,
 - what must happen next,
