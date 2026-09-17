@@ -69,6 +69,8 @@ Do not add a new major technology or feature unless:
 - it is something the project owner can explain and defend;
 - the decision is documented in `docs/DECISION_LOG.md`.
 
+If the project is executed solo, protect the 4-week deadline by keeping the Streamlit UI minimal, keeping traffic forecast/weather optional, and skipping the LLM reviewer unless all P1 core work is already on schedule.
+
 ---
 
 # Phase 0 — Project Freeze / Pre-Start Decisions
@@ -88,14 +90,14 @@ Do not add a new major technology or feature unless:
 - [ ] P1 TASK-013 — Manually test access to Hamburg short-term traffic forecast / SensorThings once.
 - [ ] P1 TASK-014 — Manually test access to DWD weather data once.
 - [ ] P0 TASK-015 — Choose a no-cost LLM strategy for the Operations Copilot.
-- [ ] P1 TASK-016 — Choose the UI technology from tools already understood well enough to explain and debug.
-- [ ] P1 TASK-017 — Confirm final project scope and explicit non-goals with the team.
+- [x] P1 TASK-016 — Select Streamlit as the UI technology for the operational dashboard.
+- [x] P1 TASK-017 — Confirm project direction, constrained scope, and explicit non-goals after teacher review.
 - [ ] P1 TASK-018 — Update `PROJECT_STATUS.md` once the topic is officially locked.
 - [ ] P1 TASK-019 — Record topic-selection decision in `docs/DECISION_LOG.md`.
 
 ---
 
-# Week 1 — Data, Leakage Audit, EDA, Baseline
+# Week 1 — Data, Leakage Audit, Baseline Models, Database
 
 ## Repository / Engineering Foundation
 
@@ -146,17 +148,20 @@ Do not add a new major technology or feature unless:
 - [ ] P1 TASK-052 — Identify missing-data and cardinality issues.
 - [ ] P1 TASK-053 — Document EDA findings in `docs/DATA.md` or `docs/MODELING.md`.
 
-## Baseline
+## Baseline / Initial Models
 
 - [ ] P1 TASK-054 — Implement trivial majority-class baseline.
 - [ ] P1 TASK-055 — Implement first leakage-safe Logistic Regression baseline.
 - [ ] P1 TASK-056 — Record baseline Precision, Recall, F1, ROC-AUC, confusion matrix.
 - [ ] P0 TASK-057 — Confirm that the project remains viable after leakage removal.
 - [ ] P1 TASK-058 — Define initial business-oriented success metric after observing baseline behavior.
+- [ ] P1 TASK-184 — Train initial Decision Tree candidate if the leakage-safe baseline and data contract are stable.
+- [ ] P1 TASK-185 — Train initial Random Forest candidate if the leakage-safe baseline and data contract are stable.
+- [ ] P1 TASK-186 — Train initial XGBoost candidate if the leakage-safe baseline and data contract are stable.
 
 ---
 
-# Week 2 — Modeling, Evaluation, MLflow, DVC, Pipeline
+# Week 2 — Model Selection, FastAPI, Pipelines, MLflow, DVC
 
 ## Feature Engineering
 
@@ -168,14 +173,26 @@ Do not add a new major technology or feature unless:
 
 ## Candidate Models
 
-- [ ] P1 TASK-064 — Train Decision Tree.
-- [ ] P1 TASK-065 — Train Random Forest.
-- [ ] P1 TASK-066 — Train XGBoost.
+- [ ] P1 TASK-064 — Complete/finalize Decision Tree experiment and log results.
+- [ ] P1 TASK-065 — Complete/finalize Random Forest experiment and log results.
+- [ ] P1 TASK-066 — Complete/finalize XGBoost experiment and log results.
 - [ ] P1 TASK-067 — Compare all candidate models against the baseline.
 - [ ] P1 TASK-068 — Perform error analysis.
 - [ ] P1 TASK-069 — Review false negatives as a business-critical error type.
 - [ ] P1 TASK-070 — Select primary model and document why.
 - [ ] P1 TASK-071 — Record model-selection decision in `docs/DECISION_LOG.md`.
+
+## FastAPI
+
+- [ ] P1 TASK-094 — Create FastAPI application.
+- [ ] P1 TASK-095 — Add typed Pydantic request model for prediction.
+- [ ] P1 TASK-096 — Add typed response model.
+- [ ] P1 TASK-097 — Implement `GET /health`.
+- [ ] P1 TASK-098 — Implement `POST /predict`.
+- [ ] P1 TASK-099 — Implement `GET /shipments/{shipment_id}`.
+- [ ] P1 TASK-100 — Implement `POST /agent/analyze`.
+- [ ] P1 TASK-101 — Ensure model loads once where practical.
+- [ ] P1 TASK-102 — Add meaningful API error handling.
 
 ## MLflow
 
@@ -213,19 +230,7 @@ Do not add a new major technology or feature unless:
 
 ---
 
-# Week 3 — API, Product UI, Agent, Docker, Monitoring
-
-## FastAPI
-
-- [ ] P1 TASK-094 — Create FastAPI application.
-- [ ] P1 TASK-095 — Add typed Pydantic request model for prediction.
-- [ ] P1 TASK-096 — Add typed response model.
-- [ ] P1 TASK-097 — Implement `GET /health`.
-- [ ] P1 TASK-098 — Implement `POST /predict`.
-- [ ] P1 TASK-099 — Implement `GET /shipments/{shipment_id}`.
-- [ ] P1 TASK-100 — Implement `POST /agent/analyze`.
-- [ ] P1 TASK-101 — Ensure model loads once where practical.
-- [ ] P1 TASK-102 — Add meaningful API error handling.
+# Week 3 — Streamlit Dashboard, Constrained Agent, Docker
 
 ## External Data Adapters
 
@@ -236,33 +241,35 @@ Do not add a new major technology or feature unless:
 - [ ] P1 TASK-107 — Ensure external APIs are never required for core `/predict`.
 - [ ] P1 TASK-108 — Mock all external API calls in automated CI.
 
-## Operations Copilot
+## Operations Copilot — Constrained Action Space
 
-- [ ] P1 TASK-109 — Implement `get_prediction(shipment_id)` tool.
-- [ ] P1 TASK-110 — Implement `get_shipment(shipment_id)` tool.
-- [ ] P1 TASK-111 — Implement historical/similar-shipment query tool.
-- [ ] P2 TASK-112 — Expose Hamburg traffic as an optional agent tool.
-- [ ] P3 TASK-113 — Expose weather as an optional agent tool.
-- [ ] P1 TASK-114 — Define agent instruction/prompt for evidence-grounded answers.
-- [ ] P1 TASK-115 — Ensure the agent clearly separates facts from recommendations.
-- [ ] P1 TASK-116 — Prevent agent from inventing traffic/weather/risk values.
-- [ ] P1 TASK-117 — Store agent interactions in PostgreSQL if practical.
+- [ ] P1 TASK-109 — Implement `get_prediction(shipment_id)` as a read-only tool.
+- [ ] P1 TASK-110 — Implement `get_shipment(shipment_id)` as a read-only tool.
+- [ ] P1 TASK-111 — Implement historical/similar-shipment query as a read-only tool.
+- [ ] P2 TASK-112 — Expose Hamburg traffic as an optional read-only agent tool.
+- [ ] P3 TASK-113 — Expose weather as an optional read-only agent tool.
+- [ ] P1 TASK-114 — Define and enforce the agent tool allow-list; no tool creation or operational actions.
+- [ ] P1 TASK-115 — Define a Pydantic-validated response schema containing `risk_summary`, `top_3_risk_factors`, `suggested_investigation_steps`, `evidence_used`, and `confidence_or_notes`.
+- [ ] P1 TASK-116 — Define the agent instructions so answers are evidence-grounded, separate facts from recommendations, and remain short/actionable rather than open-ended essays.
+- [ ] P1 TASK-117 — Prevent the agent from inventing prediction values, traffic, weather, or unsupported causal explanations.
+- [ ] P2 TASK-187 — Store agent interactions in PostgreSQL if it does not threaten P1 delivery.
 
 ## Reviewer / Validator
 
-- [ ] P1 TASK-118 — Implement deterministic validation of prediction value and factual tool outputs.
-- [ ] P2 TASK-119 — Add small LLM reviewer only if the core project remains on schedule.
-- [ ] P1 TASK-120 — Reviewer must return approve/reject plus a short reason.
+- [ ] P1 TASK-118 — Implement deterministic validation of prediction value, required structured fields, and factual tool outputs.
+- [ ] P1 TASK-120 — Validator must return approve/reject plus a short reason.
+- [ ] P2 TASK-119 — Add a small LLM reviewer only if all P1 core requirements remain on schedule.
 
-## UI
+## Streamlit UI
 
-- [ ] P1 TASK-121 — Build shipment exception table.
-- [ ] P1 TASK-122 — Add risk score/risk level display.
+- [ ] P1 TASK-121 — Create the minimal Streamlit operational dashboard.
+- [ ] P1 TASK-122 — Build shipment exception table with risk score/risk level display.
 - [ ] P1 TASK-123 — Add sort/filter for high-risk shipments.
 - [ ] P1 TASK-124 — Build selected-shipment detail panel.
-- [ ] P1 TASK-125 — Add Operations Copilot input/output area.
-- [ ] P2 TASK-126 — Display evidence/reviewer status in UI.
-- [ ] P1 TASK-127 — Keep UI limited to one main operational workflow.
+- [ ] P1 TASK-125 — Add Operations Copilot input/output area for structured actionable responses.
+- [ ] P2 TASK-126 — Display evidence used and reviewer/validator status in Streamlit.
+- [ ] P1 TASK-127 — Keep Streamlit limited to one workflow: identify and investigate high-risk shipments.
+- [ ] P1 TASK-188 — Connect Streamlit to FastAPI and PostgreSQL rather than embedding separate prediction logic in the UI.
 
 ## Docker
 
@@ -273,6 +280,10 @@ Do not add a new major technology or feature unless:
 - [ ] P1 TASK-132 — Add Grafana service.
 - [ ] P2 TASK-133 — Add MLflow service if useful.
 - [ ] P1 TASK-134 — Verify local system starts from documented commands.
+
+---
+
+# Week 4 — Monitoring, CI/CD, Stabilization, Demo, Presentation
 
 ## Prometheus / Grafana
 
@@ -285,7 +296,7 @@ Do not add a new major technology or feature unless:
 ## Evidently / Drift
 
 - [ ] P1 TASK-140 — Choose reference dataset for drift monitoring.
-- [ ] P1 TASK-141 — Define current/production-like comparison batch.
+- [ ] P1 TASK-141 — Define current/production-like comparison batch without presenting it as real production data.
 - [ ] P1 TASK-142 — Monitor selected important input feature drift.
 - [ ] P1 TASK-143 — Monitor prediction distribution drift.
 - [ ] P1 TASK-144 — Create reproducible Evidently drift report.
@@ -297,9 +308,6 @@ Do not add a new major technology or feature unless:
 - [ ] P1 TASK-147 — Preferred alert: API error rate above defined threshold.
 - [ ] P2 TASK-148 — Optional alert: important drift threshold exceeded.
 
----
-
-# Week 4 — Stabilization, Documentation, Demo, Presentation
 
 ## Testing and Reliability
 
@@ -347,6 +355,7 @@ Do not add a new major technology or feature unless:
 - [ ] P1 TASK-181 — Present limitations honestly.
 - [ ] P1 TASK-182 — Rehearse presentation to stay within time.
 - [ ] P1 TASK-183 — Store final slides in `presentation/`.
+- [ ] P1 TASK-189 — Record the final project demo after the monitored end-to-end workflow is stable.
 
 ---
 
@@ -381,6 +390,9 @@ Keep completed setup/history here instead of deleting them.
 - [x] Added initial project status.
 - [x] Defined the Logistics Exception Management & Operations Copilot concept.
 - [x] Created the authoritative project blueprint.
+- [x] Received positive teacher review of the project direction and four-week scope.
+- [x] Selected Streamlit for the minimal dashboard based on teacher feedback.
+- [x] Refined the blueprint to constrain the Operations Copilot and require structured actionable output.
 
 ---
 
