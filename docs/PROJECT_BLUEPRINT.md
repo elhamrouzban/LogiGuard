@@ -6,8 +6,8 @@
 **Planned duration:** 4 weeks  
 **Primary market context:** Germany, with a Hamburg-focused operational demo  
 **Primary users:** Logistics Operations Coordinator / Dispatcher / Freight Operations Analyst  
-**Status:** Scope candidate approved for feasibility; implementation should not begin until the Pre-Start Gate in this document is completed.  
-**Last verified:** 2026-09-15
+**Status:** Project direction reviewed positively by the teacher; scope is being finalized before implementation. The Pre-Start Gate still applies.  
+**Last verified:** 2026-09-16
 
 ---
 
@@ -26,6 +26,9 @@ A future developer, AI coding agent, reviewer, or teammate should be able to rea
 ## 2.1 Project Name
 
 **AI Logistics Exception Management & Operations Copilot**
+
+**Teacher review outcome:** The project direction was considered solid and appropriately scoped for a real engineering problem. Specific guidance incorporated into this blueprint: keep the agent's action space constrained, use structured tool calls and actionable output, use Streamlit for the dashboard, and sequence the four weeks so monitoring/CI/CD are finalized after the core ML/API/agent workflow.
+
 
 Recommended portfolio subtitle:
 
@@ -783,11 +786,13 @@ API rules:
 
 ## Role
 
-The agent is not the predictor. It helps the human interpret a shipment exception using tools.
+The agent is not the predictor. It is a constrained decision-support layer that helps a human understand a shipment exception by calling approved tools and returning a short, actionable, structured response.
 
-## Allowed tools
+## Constrained action space
 
-Minimum useful tools:
+The agent may only use an explicit allow-list of read-only tools. It must not create new tools or perform operational actions.
+
+Minimum tools:
 
 ```text
 get_prediction(shipment_id)
@@ -795,7 +800,7 @@ get_shipment(shipment_id)
 query_similar_or_historical_shipments(...)
 ```
 
-Optional enrichment:
+Optional enrichment tools:
 
 ```text
 get_hamburg_traffic(...)
@@ -803,19 +808,61 @@ get_hamburg_traffic_forecast(...)
 get_hamburg_weather(...)
 ```
 
+External tools are contextual only. Core model inference must work without them.
+
 ## Example question
 
 > Why is shipment S-1001 flagged as high risk and what should I investigate first?
 
+## Required structured output
+
+The agent must not return an open-ended essay. The response should follow a stable schema that can be validated with Pydantic.
+
+Required fields:
+
+```text
+risk_summary
+top_3_risk_factors
+suggested_investigation_steps
+evidence_used
+confidence_or_notes
+```
+
+Example shape:
+
+```text
+Risk Summary:
+High-risk shipment; model probability = 0.82
+
+Top 3 Risk Factors:
+1. ...
+2. ...
+3. ...
+
+Suggested Investigation Steps:
+1. ...
+2. ...
+3. ...
+
+Evidence Used:
+- prediction API
+- shipment record
+- historical comparison
+
+Confidence / Notes:
+...
+```
+
 ## Required behavior
 
-1. Retrieve prediction.
-2. Retrieve relevant shipment fields/history.
-3. Optionally retrieve external context.
-4. Separate facts from recommendations.
-5. Reference evidence/tool results.
-6. Return a short operational recommendation.
-7. Never claim unavailable live information.
+1. Retrieve the prediction rather than inventing a risk score.
+2. Retrieve relevant shipment fields/history through approved tools.
+3. Optionally retrieve live context only when the corresponding tool is available.
+4. Separate observed facts from recommendations.
+5. Reference the evidence/tool outputs used.
+6. Limit recommendations to concrete investigation steps.
+7. Return the required structured response.
+8. Never claim unavailable live information.
 
 ## Forbidden behavior
 
@@ -825,21 +872,26 @@ get_hamburg_weather(...)
 - execute real operational actions;
 - contact carriers/customers;
 - modify shipment data;
+- write unrestricted/open-ended essays;
+- access tools outside the allow-list;
 - bypass API/database validation.
 
 ---
 
 # 22. Reviewer / Validator
 
-The reviewer is deliberately small. Its purpose is validation, not a second large autonomous workflow.
+The reviewer remains deliberately small. Its purpose is to validate the structured agent output, not to create a second large autonomous workflow.
 
-Checks:
+## Required deterministic validation
 
-- correct prediction value;
-- factual claims supported by tool results;
-- no invented weather/traffic;
-- recommendations framed as decision support;
-- uncertainty appropriately exposed.
+The MVP must check:
+
+- prediction value matches the prediction tool/API;
+- required structured fields are present;
+- factual claims are supported by tool results;
+- no invented weather/traffic is included;
+- recommendations are framed as decision support;
+- uncertainty is exposed appropriately.
 
 Output:
 
@@ -853,18 +905,24 @@ or
 REJECT + short reason
 ```
 
-If an LLM reviewer threatens the schedule, implement deterministic validation first.
+## Optional LLM reviewer
+
+An additional LLM-based reviewer is **P2/optional**. Add it only if all P1 requirements are already on schedule. Deterministic validation is sufficient for the MVP.
 
 ---
 
-# 23. UI
+# 23. UI — Streamlit Dashboard
+
+**Selected UI technology:** Streamlit.
+
+Streamlit is used because it allows a small Python-based operational dashboard to be built quickly without introducing a separate frontend stack that could threaten the four-week scope.
 
 The UI is an operational dashboard, not a full logistics application.
 
 Minimum components:
 
 ```text
-Dashboard
+Streamlit Dashboard
 ├── Shipment exception table
 │   ├── shipment ID
 │   ├── risk score
@@ -876,13 +934,14 @@ Dashboard
 │   └── model version
 └── Operations Copilot
     ├── question/input
-    ├── evidence-backed answer
+    ├── structured actionable answer
+    ├── evidence used
     └── reviewer status
 ```
 
 Do not build authentication, payment, multi-tenancy, or complex admin screens.
 
-Use a UI technology the developer can confidently explain and maintain; do not introduce a new frontend framework solely for the capstone if a familiar web stack is already available.
+The UI must remain a single workflow focused on identifying and investigating high-risk shipments.
 
 ---
 
@@ -1080,7 +1139,9 @@ Do not create every subfolder before it is needed solely to make the repository 
 
 # 30. Four-Week Execution Plan
 
-## Week 1 — De-risk the project
+This sequence incorporates the teacher's review: establish the ML/data core first, expose it through an API and reproducible pipeline second, add the Streamlit/agent product layer third, and reserve the final week for monitoring, CI/CD, stabilization, and demo preparation.
+
+## Week 1 — Data, leakage control, baseline modeling, database
 
 ### Goal
 
@@ -1096,90 +1157,91 @@ Prove the data and ML problem before product engineering.
 - Audit candidate features for leakage.
 - Identify business entity/grouping key.
 - Define train/validation/test strategy.
+- Clean and validate the data.
 - Load cleaned data to PostgreSQL.
 - Perform focused EDA.
-- Implement trivial baseline.
-- Implement Logistic Regression baseline.
+- Implement trivial baseline and Logistic Regression.
+- Train initial Decision Tree / Random Forest / XGBoost candidates if time permits after the leakage-safe baseline.
 - Establish package/test/CI skeleton.
 
 ### Week 1 exit gate
 
-Do not continue to advanced engineering unless:
+Do not continue to product engineering unless:
 
 - target is understood;
 - leakage-safe feature set exists;
 - evaluation split is defensible;
-- baseline runs;
+- at least one baseline runs;
 - dataset license/source is documented;
+- PostgreSQL path works;
 - project still works without external live APIs.
 
-## Week 2 — Prove the ML system
+## Week 2 — Model selection, FastAPI, pipelines, MLOps foundation
 
 ### Tasks
 
-- feature engineering;
-- Decision Tree;
-- Random Forest;
-- XGBoost;
-- compare against baseline;
+- complete feature engineering;
+- complete candidate model comparison;
 - error analysis;
-- select primary model;
-- add MLflow;
-- add DVC;
-- implement Prefect batch flow;
+- select the primary model;
+- implement typed FastAPI prediction service;
+- integrate FastAPI with PostgreSQL/model artifact;
+- implement Prefect batch/training flow;
+- add MLflow experiment tracking/model lifecycle;
+- add DVC data/model versioning;
 - add model/data-quality tests;
 - prepare midterm architecture/results summary if required.
 
 ### Week 2 exit gate
 
-- selected model justified;
-- experiments reproducible;
-- data/model lifecycle documented;
+- selected model is justified;
+- `/predict` works;
+- experiments are reproducible;
+- data/model lifecycle is documented;
 - no known target leakage remains.
 
-## Week 3 — Productize the vertical slice
+## Week 3 — Streamlit dashboard + constrained Operations Copilot
 
 ### Tasks
 
-- FastAPI typed prediction endpoint;
-- PostgreSQL application integration;
-- Docker;
-- minimal UI;
-- Operations Copilot;
-- one external enrichment adapter (traffic preferred);
-- weather adapter only if core stable;
-- deterministic reviewer validation;
-- LLM reviewer only if feasible;
-- Prometheus instrumentation;
-- Grafana dashboard;
-- Evidently drift report.
+- build the minimal Streamlit dashboard;
+- show shipment risk ranking and shipment details;
+- connect Streamlit to FastAPI and PostgreSQL;
+- implement the constrained Operations Copilot;
+- define the agent tool allow-list;
+- enforce structured actionable output;
+- connect agent to prediction/database tools;
+- add one optional enrichment adapter (Hamburg traffic preferred) only if core work is stable;
+- implement deterministic reviewer/validator;
+- add LLM reviewer only if all P1 work remains on schedule;
+- Dockerize/integrate the product path as needed.
 
 ### Week 3 exit gate
 
-A user can open the UI, see shipments/risk, select a shipment, receive a model prediction, and ask the copilot for an evidence-backed explanation.
+A user can open Streamlit, see shipment risks, inspect one shipment, request an explanation, and receive a validated structured response with risk factors, investigation steps, and evidence.
 
-## Week 4 — Stabilize, monitor, document, present
+## Week 4 — Monitoring, CI/CD, stabilization, demo
 
 ### Tasks
 
-- no major new architecture;
+- add/finalize Prometheus instrumentation;
+- build minimal Grafana dashboard;
+- add Evidently drift report;
+- configure at least one alert;
+- complete GitHub Actions CI/CD checks;
 - integration testing;
 - fix reliability issues;
-- final CI;
-- monitoring dashboard;
-- demonstrate one alert;
-- finalize drift demo;
-- README setup/run instructions;
-- final architecture diagram;
-- limitations;
-- demo script;
-- presentation;
+- verify Docker/local startup;
+- finalize README and run instructions;
+- finalize architecture diagram and limitations;
+- record/rehearse the demo;
+- prepare final presentation;
 - cleanup;
 - final Definition-of-Done check.
 
 ### Week 4 rule
 
-Do **not** add a new model family, streaming platform, cloud provider, or large product feature during Week 4.
+Do **not** add a new model family, streaming platform, cloud provider, external integration, or large product feature during Week 4.
 
 ---
 
@@ -1412,9 +1474,9 @@ The project scope and data strategy can be frozen now, but these implementation 
 
 Requirement: no paid dependency; developer must understand it; it should integrate with the learned LangChain/LangGraph/tool-calling workflow if an LLM agent is used.
 
-### B. UI technology
+### B. Team capacity / solo fallback
 
-Requirement: use a technology already familiar enough to build/debug/explain; one operational dashboard only; UI must not threaten the engineering core.
+The teacher recommends working with 2–3 team members because ML + MLOps + agent + UI is a heavy four-week workload. If the project is executed solo, protect the deadline by keeping the Streamlit UI minimal, keeping weather/traffic forecast optional, and omitting the LLM reviewer unless the full P1 core is already complete.
 
 ### C. Exact production-simulation batch for drift
 
@@ -1426,6 +1488,6 @@ These are implementation choices, not reasons to change the business problem.
 
 # 41. Final Scope Statement
 
-> Build a leakage-aware machine-learning system that predicts late-delivery risk from open supply-chain data; expose the selected model through a tested, containerized FastAPI service; manage the model/data lifecycle with MLflow and DVC; store operational data in PostgreSQL; orchestrate the batch workflow; monitor service health and model/data drift; present shipment exceptions in a small UI; and provide an evidence-grounded Operations Copilot that can combine model output, shipment history, and optional free Hamburg traffic/weather context to help a human prioritize investigation.
+> Build a leakage-aware machine-learning system that predicts late-delivery risk from open supply-chain data; expose the selected model through a tested, containerized FastAPI service; manage the model/data lifecycle with MLflow and DVC; store operational data in PostgreSQL; orchestrate the batch workflow; monitor service health and model/data drift; present shipment exceptions in a small Streamlit dashboard; and provide an evidence-grounded Operations Copilot that can combine model output, shipment history, and optional free Hamburg traffic/weather context to help a human prioritize investigation.
 
 Anything outside that sentence should be treated as optional or out of scope unless a documented decision explicitly changes the project.
