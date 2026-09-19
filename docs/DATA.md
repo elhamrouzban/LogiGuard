@@ -1,234 +1,230 @@
 # Data Documentation
 
 **Project:** LogiGuard AI — AI Logistics Exception Management & Operations Copilot  
-**Purpose:** Document verified dataset facts, data-quality findings, leakage analysis, and the modeling data contract.  
-**Current stage:** Initial dataset verification and pre-start data validation.
+**Current stage:** Week 1 — Data Validation / Leakage Audit  
+**Purpose:** Keep verified dataset facts, prediction-time assumptions, leakage decisions, validation status, and next data steps in one concise source of truth.
 
 ---
 
-## 1. Primary Dataset
+## 1. Dataset
 
 **Name:** DataCo SMART SUPPLY CHAIN FOR BIG DATA ANALYSIS  
 **Source:** Mendeley Data, Version 5  
 **DOI:** https://doi.org/10.17632/8gx2fvg2k6.5  
-**License:** CC BY 4.0  
+**License:** CC BY 4.0
 
-Required source files:
+Required local files:
 
 ```text
 data/raw/DataCoSupplyChainDataset.csv
 data/raw/DescriptionDataCoSupplyChain.csv
 ```
 
-Raw source files are stored locally and intentionally excluded from Git.
+Raw data stays local and is excluded from Git.
 
 ---
 
-## 2. Verified Local Dataset Facts
-
-Verified from the local copy of `DataCoSupplyChainDataset.csv`.
-
-### Shape
+## 2. Verified Facts
 
 ```text
 Rows:    180,519
 Columns: 53
+Target:  Late_delivery_risk
 ```
 
-### Candidate Target
-
-```text
-Late_delivery_risk
-```
-
-The source description defines this as:
+Target meaning from the source description:
 
 ```text
 1 = late delivery
 0 = not late delivery
 ```
 
-### Target Distribution
+Target distribution:
 
 ```text
 1: 98,977 rows (54.83%)
 0: 81,542 rows (45.17%)
 ```
 
-### Initial Interpretation
-
 The target is not severely imbalanced.
 
-This means the first baseline can use ordinary binary-classification metrics without treating extreme class imbalance as the primary problem.
+### Description-file mismatch
 
----
+The dataset has 53 columns while the description file documents 52 fields.
 
-## 3. First Verified Columns
-
-The first columns in the local dataset include:
+Verified mismatch:
 
 ```text
-Type
-Days for shipping (real)
-Days for shipment (scheduled)
-Benefit per order
-Sales per customer
-Delivery Status
-Late_delivery_risk
-Category Id
-Category Name
-Customer City
+Dataset:     shipping date (DateOrders)
+Description: Shipping date (DateOrders)
 ```
 
-No feature is approved for modeling merely because it exists in the dataset.
+This is only a case difference.
 
-Every candidate feature must later pass the prediction-time availability and leakage audit.
+`Order Zipcode` exists in the dataset but has no matching documented field in the description file, so it remains **undocumented/pending verification**.
 
 ---
 
-## 4. Description File Consistency Check
+## 3. Verified Timeline and Target Logic
 
-The local dataset contains 53 columns, while the description file documents 52 fields.
+### Actual shipping days
 
-A direct schema comparison found:
-
-### Present in dataset but not exactly matched in description
+Across all **180,519 rows**:
 
 ```text
-Order Zipcode
+Days for shipping (real)
+=
+calendar-day difference between
+order date (DateOrders)
+and
 shipping date (DateOrders)
 ```
 
-### Present in description but not exactly matched in dataset
+### Target-generation rule
+
+Across all **180,519 rows**, `Late_delivery_risk` is exactly reproduced by:
 
 ```text
-Shipping date (DateOrders)
+Late_delivery_risk = 1
+if:
+Days for shipping (real) > Days for shipment (scheduled)
+and
+Delivery Status != "Shipping canceled"
 ```
+
+For canceled shipments, the target remains `0`.
 
 ### Interpretation
 
-`shipping date (DateOrders)` vs `Shipping date (DateOrders)` is a case-only naming mismatch.
-
-`Order Zipcode` appears in the dataset but does not have a matching documented field in the description file.
-
-### Current Rule
-
-`Order Zipcode` must be treated as undocumented until its semantics are independently confirmed.
-
-Do not use it as a model feature merely because it is available.
+The delay label measures the order-to-shipping period against the scheduled duration. It therefore includes time before shipment leaves the company and is not limited to transportation time after shipment.
 
 ---
 
-## 5. Known Leakage-Risk Fields
+## 4. Prediction-Time Contract
 
-The following fields are already identified as high-risk and require explicit exclusion or justification.
+### Working prediction point
 
-### `Delivery Status`
+> Predict late-delivery risk at **order creation time**, before the actual shipping date and realized shipping duration are known.
 
-This field represents the delivery outcome/status and is therefore likely to reveal the target directly or indirectly.
-
-Current status:
-
-```text
-Leakage risk: High
-Model use: Do not use unless a future analysis proves it is available before the prediction timestamp.
-```
-
-### `Days for shipping (real)`
-
-This field represents the actual realized shipping duration.
-
-Because it is only known after shipping has occurred, it is a strong post-outcome leakage candidate.
-
-Current status:
-
-```text
-Leakage risk: High
-Model use: Exclude from predictive features.
-```
-
-### `Days for shipment (scheduled)`
-
-This field represents planned/scheduled shipping duration.
-
-Current interpretation:
-
-```text
-Potentially valid pre-outcome feature
-```
-
-It still requires confirmation against the final prediction timestamp.
+A feature is valid only if it would genuinely be available at that moment.
 
 ---
 
-## 6. Data Validation Status
+## 5. Feature Availability / Leakage Audit
+
+### Confirmed future information or target leakage
+
+Do not use as model features:
+
+- `Days for shipping (real)`
+- `Delivery Status`
+- `shipping date (DateOrders)`
+- `Late_delivery_risk` — target
+
+### Likely available at order time
+
+- `Type`
+- `Days for shipment (scheduled)`
+- `Category Id`
+- `Category Name`
+- `Customer City`
+- `Customer Country`
+- `Customer Id`
+- `Customer Segment`
+- `Customer State`
+- `Customer Zipcode`
+- `Department Id`
+- `Department Name`
+- `Market`
+- `Order City`
+- `Order Country`
+- `Order Customer Id`
+- `order date (DateOrders)`
+- `Order Id`
+- `Order Item Cardprod Id`
+- `Order Item Discount`
+- `Order Item Discount Rate`
+- `Order Item Id`
+- `Order Item Product Price`
+- `Order Item Quantity`
+- `Sales`
+- `Order Item Total`
+- `Order Region`
+- `Order State`
+- `Order Zipcode`
+- `Product Card Id`
+- `Product Category Id`
+- `Product Name`
+- `Product Price`
+- `Shipping Mode`
+
+These are not yet the final feature set; identifier leakage, cardinality, redundancy, usefulness, and split leakage still need review.
+
+### Exclude for identity / privacy / low modeling value
+
+- `Customer Email`
+- `Customer Fname`
+- `Customer Lname`
+- `Customer Password`
+- `Customer Street`
+- `Product Image`
+
+### Ambiguous — verify before use
+
+- `Benefit per order`
+- `Sales per customer`
+- `Latitude`
+- `Longitude`
+- `Order Item Profit Ratio`
+- `Order Profit Per Order`
+- `Order Status`
+- `Product Description`
+- `Product Status`
+
+### Notebook-derived columns
+
+Created only for analysis, not raw model features:
+
+- `order_to_shipping_days`
+- `calculated_late`
+- `calendar_shipping_days`
+
+`calculated_late` and `calendar_shipping_days` expose target-generation logic and must never be used as predictive features.
+
+---
+
+## 6. Validation Status
 
 ### Completed
 
-- [x] Official dataset files obtained.
-- [x] Raw files stored locally under `data/raw/`.
+- [x] Official files obtained and stored locally.
 - [x] Raw files excluded from Git.
-- [x] Dataset loads successfully with pandas.
-- [x] Local row count verified.
-- [x] Local column count verified.
-- [x] Target distribution verified.
-- [x] Candidate target definition confirmed from the description file.
-- [x] Dataset-vs-description schema mismatch checked.
+- [x] Dataset loads successfully.
+- [x] Row/column counts verified.
+- [x] Target definition and distribution verified.
+- [x] Description-file mismatch checked.
+- [x] Actual shipping-day derivation verified.
+- [x] Exact target-generation rule verified.
+- [x] Confirmed leakage fields identified.
+- [x] Working prediction timestamp defined.
+- [x] Initial feature-availability audit created.
 
-### Not Yet Completed
+### Pending
 
-- [ ] Define exact prediction timestamp.
-- [ ] Audit every feature for prediction-time availability.
-- [ ] Build complete leakage audit table.
+- [ ] Verify ambiguous fields.
+- [ ] Finalize prediction timestamp.
+- [ ] Complete final leakage audit.
+- [ ] Check nulls, duplicates, data types, timestamps, and category cardinality.
 - [ ] Identify entity/grouping keys.
 - [ ] Define train/validation/test split strategy.
-- [ ] Check null rates.
-- [ ] Check duplicates.
-- [ ] Check timestamp parsing.
-- [ ] Check suspicious target-correlated fields.
-- [ ] Create leakage-safe processed dataset.
-- [ ] Train first leakage-safe baseline.
+- [ ] Create leakage-safe processed data.
+- [ ] Train the first leakage-safe baseline.
 
 ---
 
-## 7. Prediction-Time Data Contract
+## 7. Storage / Reproducibility
 
-Not finalized yet.
-
-Before modeling begins, the project must define:
-
-> At what exact business moment is the model supposed to predict late-delivery risk?
-
-Once that point is fixed, every candidate feature will be classified as:
-
-```text
-Available before prediction
-Available only after prediction
-Ambiguous / requires verification
-```
-
-Only features genuinely available at prediction time may enter the model.
-
----
-
-## 8. Planned Leakage Audit Table
-
-The full audit will use this structure:
-
-| Feature | Available at prediction time? | Leakage risk | Use? | Reason |
-|---|---|---|---|---|
-| `Delivery Status` | No / outcome-derived | High | No | Reveals delivery outcome |
-| `Days for shipping (real)` | No | High | No | Realized shipping duration is known after shipment |
-| `Days for shipment (scheduled)` | Likely yes | Low/Medium | Pending | Must confirm against prediction timestamp |
-| `Order Zipcode` | Unknown | Unknown | Pending | Undocumented in description file |
-
-This table will be expanded to all relevant columns before training.
-
----
-
-## 9. Storage Strategy
-
-### Local ML Data
+Local ML data:
 
 ```text
 data/raw/
@@ -236,17 +232,7 @@ data/interim/
 data/processed/
 ```
 
-Purpose:
-
-- `raw/` — original downloaded source files
-- `interim/` — intermediate cleaned/transformed files
-- `processed/` — leakage-safe model-ready datasets
-
-These files are local and are not committed to Git.
-
-### Operational Application Data
-
-PostgreSQL will later be used for runtime/application data such as:
+PostgreSQL will later store operational application data such as:
 
 ```text
 shipments
@@ -255,32 +241,16 @@ model_versions
 agent_interactions
 ```
 
-PostgreSQL does not replace the local raw-training-data directory.
+The repository stores code, documentation, validation logic, setup instructions, and later DVC metadata if used; it does not store the raw DataCo dataset.
 
 ---
 
-## 10. Reproducibility Rule
+## 8. Next Steps
 
-The repository should contain:
+1. Verify the ambiguous fields against the source description and business timing.
+2. Finalize the prediction timestamp.
+3. Complete the leakage audit.
+4. Run data-quality checks.
+5. Define grouping keys and train/validation/test split strategy.
 
-- source code;
-- validation logic;
-- data setup instructions;
-- dataset source/version/license;
-- schema expectations;
-- transformations;
-- DVC metadata later, if used.
-
-The repository should not contain the raw DataCo dataset itself.
-
-A new developer should be able to clone the repository, download the official dataset from the documented source, place it under `data/raw/`, and reproduce the validation and processing workflow.
-
----
-
-## 11. Next Data Step
-
-The next required data decision is:
-
-> Define the exact prediction timestamp.
-
-That decision is required before a trustworthy feature/leakage audit can be completed.
+EDA and baseline modeling start after these checks are sufficiently complete.
