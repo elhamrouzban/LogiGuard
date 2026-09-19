@@ -12,3 +12,5 @@ data/processed/*
 
 # Keep data documentation in Git
 !data/README.md
+
+.venv/
