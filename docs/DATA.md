@@ -181,6 +181,18 @@ These are not yet the final feature set; identifier leakage, cardinality, redund
 - `Product Description`
 - `Product Status`
 
+### `Order Status`
+
+**Status:** Ambiguous — requires timing verification.
+
+The source documentation lists workflow states such as `PENDING_PAYMENT`, `PROCESSING`, `COMPLETE`, `CANCELED`, and `PAYMENT_REVIEW`, but does not specify when the recorded status was captured relative to order creation.
+
+Observed data shows that `CANCELED` and `SUSPECTED_FRAUD` records always have `Late_delivery_risk = 0`, while other statuses have a target distribution close to the overall dataset distribution.
+
+This makes `Order Status` potentially informative, but not yet safe to use.
+
+**Current decision:** Keep it excluded from model features until prediction-time availability is verified.
+
 ### Notebook-derived columns
 
 Created only for analysis, not raw model features:
