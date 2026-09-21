@@ -105,6 +105,19 @@ Delivery Status != "Shipping canceled"
 
 For canceled shipments, the target remains `0`.
 
+### Target Interpretation
+
+`Late_delivery_risk` represents a delay between order creation and shipment, not a delay between order creation and final customer delivery.
+
+Verified timeline:
+
+```text
+Order creation
+    ↓
+Pre-shipment / fulfillment process
+    ↓
+Shipping date
+
 ### Interpretation
 
 The delay label measures the order-to-shipping period against the scheduled duration. It therefore includes time before shipment leaves the company and is not limited to transportation time after shipment.
@@ -181,7 +194,7 @@ Late-delivery rates differ substantially across shipping modes:
 
 This indicates that `Shipping Mode` has strong observed association with `Late_delivery_risk`.
 
-**Current decision:** Keep `Shipping Mode` as a model feature, provided its availability at order creation remains valid under the prediction-time contract.
+**Current decision:** Retain `Shipping Mode` as a candidate model feature, provided its availability at order creation remains valid under the prediction-time contract.
 
 **Shipping Mode / Scheduled Days redundancy:**  
 `Shipping Mode` and `Days for shipment (scheduled)` are deterministically mapped across all 180,519 rows:
@@ -192,6 +205,22 @@ This indicates that `Shipping Mode` has strong observed association with `Late_d
 - `Standard Class` ↔ 4 scheduled days
 
 Therefore, these two columns encode the same scheduling information.
+
+**Order-hour / Same Day target artifact:**  
+`order_hour`, derived from `order date (DateOrders)`, shows a strong relationship with `Late_delivery_risk` for `Same Day` orders.
+
+For all 9,737 `Same Day` orders, the exact elapsed time between order creation and shipping is exactly 12 hours.
+
+Because `Days for shipping (real)` is based on calendar-date difference rather than exact elapsed hours:
+
+- orders placed during hours `00–11` remain on the same calendar day and have `Days for shipping (real) = 0`
+- orders placed during hours `12–23` cross midnight and have `Days for shipping (real) = 1`
+
+Since `Same Day` maps to `Days for shipment (scheduled) = 0`, this creates a near-deterministic relationship between `order_hour` and the target for Same Day orders.
+
+This is not classic future-information leakage because `order_hour` is available at order creation. However, it reflects a target-generation artifact based on calendar-day boundaries.
+
+**Current decision:** Keep `order_hour` under evaluation and compare model performance with and without it. If retained, document that part of its predictive power comes from this target-definition rule.
 
 **Current decision:** Do not use both simultaneously as independent model features. The final retained representation will be selected during feature engineering.
 
