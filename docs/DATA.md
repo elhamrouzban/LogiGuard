@@ -48,6 +48,17 @@ Target distribution:
 
 The target is not severely imbalanced.
 
+**Temporal coverage:**  
+Order data spans from `2015-01-01 00:00:00` to `2018-01-31 23:38:00`.
+
+Coverage is not uniform across all years:
+- 2015 and 2016 include all 12 months.
+- 2017 contains fewer records in October–December.
+- 2018 contains only January.
+
+Therefore, aggregate monthly order counts are affected by incomplete temporal coverage and should not be interpreted directly as evidence of seasonality or demand trends.
+
+
 ### Description-file mismatch
 
 The dataset has 53 columns while the description file documents 52 fields.
@@ -160,6 +171,30 @@ Do not use as model features:
 
 These are not yet the final feature set; identifier leakage, cardinality, redundancy, usefulness, and split leakage still need review.
 
+**Shipping Mode — observed predictive signal:**  
+Late-delivery rates differ substantially across shipping modes:
+
+- First Class: 95.3%
+- Second Class: 76.6%
+- Same Day: 45.7%
+- Standard Class: 38.1%
+
+This indicates that `Shipping Mode` has strong observed association with `Late_delivery_risk`.
+
+**Current decision:** Keep `Shipping Mode` as a model feature, provided its availability at order creation remains valid under the prediction-time contract.
+
+**Shipping Mode / Scheduled Days redundancy:**  
+`Shipping Mode` and `Days for shipment (scheduled)` are deterministically mapped across all 180,519 rows:
+
+- `Same Day` ↔ 0 scheduled days
+- `First Class` ↔ 1 scheduled day
+- `Second Class` ↔ 2 scheduled days
+- `Standard Class` ↔ 4 scheduled days
+
+Therefore, these two columns encode the same scheduling information.
+
+**Current decision:** Do not use both simultaneously as independent model features. The final retained representation will be selected during feature engineering.
+
 ### Exclude for identity / privacy / low modeling value
 
 - `Customer Email`
@@ -266,3 +301,42 @@ The repository stores code, documentation, validation logic, setup instructions,
 5. Define grouping keys and train/validation/test split strategy.
 
 EDA and baseline modeling start after these checks are sufficiently complete.
+
+### Financial Feature Redundancy
+
+Verified relationships across all 180,519 rows:
+
+```text
+Sales ≈ Order Item Product Price × Order Item Quantity
+
+Order Item Total ≈ Sales - Order Item Discount
+
+Benefit per order = Order Profit Per Order
+```
+
+These relationships indicate that several financial fields are derived or redundant rather than independent features.
+
+**Current decision:** Treat these variables as secondary features for delay prediction. Avoid including multiple mathematically overlapping financial fields unless later EDA/modeling shows clear predictive value.
+
+**Important:** This is a redundancy issue, not confirmed target leakage.
+
+**Market / Order Region — observed target association:**  
+`Market` shows very little variation in late-delivery rate across categories, with all markets close to the overall target rate.
+
+`Order Region` shows somewhat more variation, but most regions still have similar late-delivery rates.
+
+**Current interpretation:** Geography may provide limited standalone predictive signal, although it may still become useful in combination with other features.
+
+**Category Name — observed target association:**  
+`Category Name` contains 51 categories with a highly uneven frequency distribution.
+
+Some categories show noticeably higher or lower late-delivery rates, but the largest categories remain close to the overall dataset rate. The most extreme rates are mostly associated with small sample sizes.
+
+**Current interpretation:** `Category Name` shows weak standalone association with `Late_delivery_risk`. It may still be useful in combination with other features, but it is not currently considered a strong individual predictor.
+
+**Order month — temporal association:**  
+Monthly late-delivery rates remain relatively stable across years, generally around the overall dataset rate.
+
+Some month-to-month variation exists, but no strong or consistent seasonal pattern is observed across years.
+
+**Current interpretation:** `order_month` shows weak standalone association with `Late_delivery_risk` and may still be retained as a secondary temporal feature.
