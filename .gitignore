@@ -1,2 +1,19 @@
 .DS_Store
-.DS_Store
+
+# Local datasets
+data/raw/*
+data/interim/*
+data/processed/*
+
+# Keep folder structure in Git
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# Keep data documentation in Git
+!data/README.md
+
+.venv/
+
+# Local exploratory notebooks
+notebooks/
