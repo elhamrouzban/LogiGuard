@@ -437,18 +437,17 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
 - `Product Image`
   - Identity/privacy/low modeling value.
 
-- One of:
-  - `Benefit per order`
-  - `Order Profit Per Order`
-  - These two columns are exact duplicates across all rows.
-  - `Benefit per order`
+- `Order Profit Per Order`
+  - **DROP**
+  - Exact duplicate of `Benefit per order`.
+  - Prediction-time availability is not verified.
+  - Shows essentially no standalone linear association with `Late_delivery_risk` (`r ≈ -0.004`).
+  - Low priority for the late-shipment prediction problem.
+
+- `Benefit per order`
   - **DROP**
   - Exact duplicate of `Order Profit Per Order`.
-
-- `Order Profit Per Order`
-  - **INVESTIGATE**
-  - Retained as the representative profit feature.
-  - Prediction-time availability is not yet verified.
+  - Excluded for the same reasons.
 
 - `Latitude`
 - `Longitude`
@@ -462,6 +461,12 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
   - Exact duplicate of `Order Item Total` across all 180,519 rows.
   - Adds no independent information.
 
+- `Order Item Profit Ratio`
+  - **DROP**
+  - Strongly correlated with the other profit-related fields (`r ≈ 0.824`).
+  - Shows essentially no standalone linear association with `Late_delivery_risk` (`r ≈ -0.002`).
+  - Low priority for the late-shipment prediction problem and excluded from the baseline feature set.
+
 ### INVESTIGATE — reviewed but not finalized
 
 - `order_hour`
@@ -471,20 +476,6 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
 
 - `Order Status`
   - Timing relative to order creation is still unverified.
-
-- `Sales per customer`
-  - Semantic meaning and prediction-time availability need verification.
-
-- `Latitude`
-- `Longitude`
-  - Need to verify what location they represent.
-
-- `Order Item Profit Ratio`
-  - Timing / derivation still unclear.
-
-- `Benefit per order` or `Order Profit Per Order`
-  - Only one can remain because they are exact duplicates.
-  - Prediction-time availability still needs verification.
 
 - `Product Description`
   - Already resolved as DROP.
