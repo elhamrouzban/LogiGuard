@@ -409,6 +409,55 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
   - Weak standalone association.
   - Retain as a secondary temporal candidate.
 
+- `Category Name`
+  - Human-readable representation of the product category.
+  - `Category Id` maps one-to-one to `Category Name`, so only one representation is needed.
+
+- `Product Name`
+  - Human-readable representation of the product.
+  - `Product Card Id` maps one-to-one to `Product Name`, so only one representation is needed.
+  - Final usefulness will be evaluated during modeling because it has 118 unique categories.
+
+- `Product Name`
+  - **KEEP**
+  - More granular product representation.
+  - Each `Product Name` maps to exactly one `Product Price`.
+  - Retained because `Product Price` alone cannot uniquely identify the product.
+
+- `Type`
+  - **KEEP**
+  - Low-cardinality categorical feature with 4 values.
+  - Shows some variation in late-shipment rate, particularly for `TRANSFER`.
+  - Retained as a candidate order-time feature.
+
+- `Customer Segment`
+  - **KEEP**
+  - Low-cardinality categorical feature with 3 values.
+  - Shows very weak standalone association with `Late_delivery_risk`.
+  - Retained because it is inexpensive to encode and may still contribute through interactions.
+
+- `Customer State`
+  - **KEEP**
+  - Retained as the main customer-location feature.
+  - Only 3 rows contain invalid ZIP-like values (`91732`, `95758`); these will be treated as missing during preprocessing.
+
+- `Order Country`
+  - **KEEP**
+  - Destination-country feature with moderate cardinality (`164` values).
+  - May capture routing or geographic differences relevant to fulfillment.
+  - Retained as the main detailed order-destination feature.
+
+- `Order Item Quantity`
+  - **KEEP**
+  - Low-cardinality order-time feature with 5 well-supported values.
+  - Shows little standalone relationship with `Late_delivery_risk`, but is inexpensive to retain and may contribute through feature interactions.
+
+- `Order Item Quantity`
+  - **KEEP**
+  - Low-cardinality order-time feature with 5 well-supported values.
+  - Shows little standalone relationship with `Late_delivery_risk`, but is inexpensive to retain and may contribute through feature interactions.
+
+
 ### DROP — excluded
 
 - `Days for shipping (real)`
@@ -467,48 +516,121 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
   - Shows essentially no standalone linear association with `Late_delivery_risk` (`r ≈ -0.002`).
   - Low priority for the late-shipment prediction problem and excluded from the baseline feature set.
 
+- `Order Status`
+  - **DROP**
+  - Prediction-time availability cannot be verified.
+  - The field contains workflow states that may represent post-order information.
+  - `CANCELED` and `SUSPECTED_FRAUD` records have `Late_delivery_risk = 0` for all observed rows, increasing target-proximity concerns.
+  - Excluded from the baseline feature set to avoid potential post-order information leakage.
+
+- `Order Item Id`
+  - **DROP**
+  - Unique for every row (`180,519` unique values).
+  - Pure row-level identifier with no expected predictive value.
+
+- `Order Id`
+  - **DROP as model feature**
+  - Order identifier, not a meaningful predictive feature.
+  - Retain only for grouping, validation, or train/test split checks.
+
+- `Customer Id`
+  - **DROP as raw model feature**
+  - High-cardinality customer identifier.
+  - May be retained only for grouping or split-leakage checks.
+
+- `Order Customer Id`
+  - **DROP**
+  - Exact duplicate of `Customer Id` across all rows.
+
+- `Order Zipcode`
+  - **DROP**
+  - `86.24%` missing values.
+  - Too incomplete for the baseline feature set.
+
+- `Product Category Id`
+  - **DROP**
+  - Exact duplicate of `Category Id` across all rows.
+
+- `Order Item Cardprod Id`
+  - **DROP**
+  - Exact duplicate of `Product Card Id` across all rows.
+
+- `Order Customer Id`
+  - **DROP**
+  - Exact duplicate of `Customer Id` across all rows.
+
+- `Category Id`
+  - **DROP**
+  - One-to-one mapping with `Category Name`.
+  - Dropped in favor of the more interpretable categorical representation.
+
+- `Product Card Id`
+  - **DROP**
+  - One-to-one mapping with `Product Name`.
+  - Dropped in favor of the more interpretable categorical representation.
+
+- `Department Id`
+  - **DROP**
+  - One-to-one mapping with `Department Name`.
+  - Dropped in favor of the more interpretable categorical representation.
+
+- `Product Price`
+  - **DROP**
+  - Deterministically derived from `Product Name`.
+  - Multiple products may share the same price, so price contains less information than product identity.
+
+- `Customer Country`
+  - **DROP**
+  - Only two categories with nearly identical late-shipment rates.
+
+- `Customer City`
+  - **DROP**
+  - Higher-cardinality geographic representation (`563` unique values).
+  - Dropped in favor of the lower-cardinality `Customer State`.
+
+- `Customer Zipcode`
+  - **DROP**
+  - High-cardinality (`996` unique values) and largely redundant with customer geography.
+  - Dropped in favor of `Customer State`.
+
+- `Order State`
+  - **DROP**
+  - High cardinality (`1,089` values).
+  - Many categories have very small sample sizes, producing unstable extreme late rates.
+  - Dropped to reduce overfitting risk.
+
+- `Order City`
+  - **DROP**
+  - Very high cardinality (`3,597` values).
+  - Too granular for the baseline model and likely to create sparse categories and overfitting.
+
+- `Order Item Discount Rate`
+  - **DROP**
+  - Approximately derived from `Order Item Discount / Sales`.
+  - The rounded relationship holds for 179,834 of 180,519 rows (~99.62%).
+  - Excluded to reduce redundant financial information.
+
+- `Order Item Product Price`
+  - **DROP**
+  - Exact duplicate of `Product Price` across all 180,519 rows.
+  - Adds no independent information.
+
+- `Sales`
+  - **DROP**
+  - Exactly derived from `Order Item Product Price × Order Item Quantity`.
+  - Adds no independent information.
+
+- `Order Item Total`
+  - **DROP**
+  - Derived from `Sales - Order Item Discount` to cent-level precision across the dataset.
+  - Redundant with retained order/item information.
+
+
 ### INVESTIGATE — reviewed but not finalized
 
-- `order_hour`
-  - Available at order time.
-  - Strong relationship with the target is largely driven by a `Same Day` calendar-boundary artifact.
-  - Compare models with and without this feature.
-
-- `Order Status`
-  - Timing relative to order creation is still unverified.
-
-- `Product Description`
-  - Already resolved as DROP.
-
-- `Product Status`
-  - Already resolved as DROP.
-
-### NOT REVIEWED — audit still required
-
-The following features have not yet received a sufficient availability, leakage, redundancy, cardinality, or modeling-value review:
-
-- `Type`
-- `Category Id`
-- `Customer City`
-- `Customer Country`
-- `Customer Id`
-- `Customer Segment`
-- `Customer State`
-- `Customer Zipcode`
-- `Department Id`
-- `Department Name`
-- `Order City`
-- `Order Country`
-- `Order Customer Id`
-- `Order Id`
-- `Order Item Cardprod Id`
-- `Order Item Discount Rate`
-- `Order Item Id`
-- `Order State`
-- `Order Zipcode`
-- `Product Card Id`
-- `Product Category Id`
-- `Product Name`
-- `Product Price`
-
-**Status:** These features must be reviewed before the final modeling feature set is frozen.
+- `order_hour` *(engineered from `order date (DateOrders)`)*
+  - **INVESTIGATE / MODEL EXPERIMENT**
+  - Available at prediction time.
+  - Shows useful target association.
+  - Part of its signal is driven by the `Same Day` calendar-boundary rule.
+  - Will be created during feature engineering and evaluated with an ablation test (model with vs. without `order_hour`).
