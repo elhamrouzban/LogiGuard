@@ -16,4 +16,4 @@ data/processed/*
 .venv/
 
 # Local exploratory notebooks
-notebooks/
+notebooks/project_screenshots
