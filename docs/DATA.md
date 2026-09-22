@@ -369,3 +369,155 @@ Monthly late-delivery rates remain relatively stable across years, generally aro
 Some month-to-month variation exists, but no strong or consistent seasonal pattern is observed across years.
 
 **Current interpretation:** `order_month` shows weak standalone association with `Late_delivery_risk` and may still be retained as a secondary temporal feature.
+
+
+
+
+
+
+## Feature Decision Registry
+
+### KEEP — approved / retained as candidates
+
+- `Shipping Mode`
+  - Strong observed association with `Late_delivery_risk`.
+  - Available at order time, subject to final prediction-time validation.
+  - Do not use simultaneously with `Days for shipment (scheduled)` because they encode the same scheduling information.
+
+- `Days for shipment (scheduled)`
+  - Available at order time.
+  - Deterministically mapped to `Shipping Mode`.
+  - Retain only one of these two representations in the final feature set.
+
+- `Market`
+  - Available at order time.
+  - Weak standalone association, but may still contribute in combination with other features.
+
+- `Order Region`
+  - More granular geographic feature than `Market`.
+  - Weak standalone association, but may still contribute in combination with other features.
+
+- `Category Name`
+  - Weak standalone association.
+  - Retain as a candidate because interaction effects may still be useful.
+
+- `order_month`
+  - Weak and inconsistent standalone association.
+  - Retain as a secondary temporal candidate.
+
+- `order_dayofweek`
+  - Weak standalone association.
+  - Retain as a secondary temporal candidate.
+
+### DROP — excluded
+
+- `Days for shipping (real)`
+  - Future information / target leakage.
+
+- `Delivery Status`
+  - Future information and directly involved in target-generation logic.
+
+- `shipping date (DateOrders)`
+  - Future information.
+
+- `Late_delivery_risk`
+  - Target.
+
+- `Product Description`
+  - 100% missing.
+
+- `Product Status`
+  - Constant value.
+
+- `Customer Email`
+- `Customer Fname`
+- `Customer Lname`
+- `Customer Password`
+- `Customer Street`
+- `Product Image`
+  - Identity/privacy/low modeling value.
+
+- One of:
+  - `Benefit per order`
+  - `Order Profit Per Order`
+  - These two columns are exact duplicates across all rows.
+  - `Benefit per order`
+  - **DROP**
+  - Exact duplicate of `Order Profit Per Order`.
+
+- `Order Profit Per Order`
+  - **INVESTIGATE**
+  - Retained as the representative profit feature.
+  - Prediction-time availability is not yet verified.
+
+- `Latitude`
+- `Longitude`
+  - Customer-location coordinates.
+  - Not directly aligned with the order-to-shipping target.
+  - High-cardinality and largely redundant with customer geography fields.
+  - Excluded from the baseline feature set.
+
+- `Sales per customer`
+  - **DROP**
+  - Exact duplicate of `Order Item Total` across all 180,519 rows.
+  - Adds no independent information.
+
+### INVESTIGATE — reviewed but not finalized
+
+- `order_hour`
+  - Available at order time.
+  - Strong relationship with the target is largely driven by a `Same Day` calendar-boundary artifact.
+  - Compare models with and without this feature.
+
+- `Order Status`
+  - Timing relative to order creation is still unverified.
+
+- `Sales per customer`
+  - Semantic meaning and prediction-time availability need verification.
+
+- `Latitude`
+- `Longitude`
+  - Need to verify what location they represent.
+
+- `Order Item Profit Ratio`
+  - Timing / derivation still unclear.
+
+- `Benefit per order` or `Order Profit Per Order`
+  - Only one can remain because they are exact duplicates.
+  - Prediction-time availability still needs verification.
+
+- `Product Description`
+  - Already resolved as DROP.
+
+- `Product Status`
+  - Already resolved as DROP.
+
+### NOT REVIEWED — audit still required
+
+The following features have not yet received a sufficient availability, leakage, redundancy, cardinality, or modeling-value review:
+
+- `Type`
+- `Category Id`
+- `Customer City`
+- `Customer Country`
+- `Customer Id`
+- `Customer Segment`
+- `Customer State`
+- `Customer Zipcode`
+- `Department Id`
+- `Department Name`
+- `Order City`
+- `Order Country`
+- `Order Customer Id`
+- `Order Id`
+- `Order Item Cardprod Id`
+- `Order Item Discount Rate`
+- `Order Item Id`
+- `Order State`
+- `Order Zipcode`
+- `Product Card Id`
+- `Product Category Id`
+- `Product Name`
+- `Product Price`
+
+**Status:** These features must be reviewed before the final modeling feature set is frozen.
