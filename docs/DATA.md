@@ -2,7 +2,7 @@
 
 **Project:** LogiGuard AI — AI Logistics Exception Management & Operations Copilot  
 **Current stage:** Week 1 — Data Validation / Leakage Audit  
-**Purpose:** Keep verified dataset facts, prediction-time assumptions, leakage decisions, validation status, and next data steps in one concise source of truth.
+**Purpose:** Keep verified dataset facts, prediction-time assumptions, leakage decisions, feature decisions, and next data steps in one concise source of truth.
 
 ---
 
@@ -22,9 +22,7 @@ data/raw/DescriptionDataCoSupplyChain.csv
 
 Raw data stays local and is excluded from Git.
 
----
-
-## 2. Verified Facts
+### Verified shape and target
 
 ```text
 Rows:    180,519
@@ -48,22 +46,19 @@ Target distribution:
 
 The target is not severely imbalanced.
 
-**Temporal coverage:**  
+### Temporal coverage
+
 Order data spans from `2015-01-01 00:00:00` to `2018-01-31 23:38:00`.
 
-Coverage is not uniform across all years:
-- 2015 and 2016 include all 12 months.
-- 2017 contains fewer records in October–December.
+- 2015 and 2016 contain all 12 months.
+- 2017 has fewer records in October–December.
 - 2018 contains only January.
 
-Therefore, aggregate monthly order counts are affected by incomplete temporal coverage and should not be interpreted directly as evidence of seasonality or demand trends.
-
+Aggregate monthly counts are therefore affected by incomplete temporal coverage and should not be interpreted directly as seasonality or demand trends.
 
 ### Description-file mismatch
 
 The dataset has 53 columns while the description file documents 52 fields.
-
-Verified mismatch:
 
 ```text
 Dataset:     shipping date (DateOrders)
@@ -72,11 +67,11 @@ Description: Shipping date (DateOrders)
 
 This is only a case difference.
 
-`Order Zipcode` exists in the dataset but has no matching documented field in the description file, so it remains **undocumented/pending verification**.
+`Order Zipcode` exists in the dataset but has no matching field in the description file. It is undocumented in the source description and is excluded from the baseline for data-quality reasons described below.
 
 ---
 
-## 3. Verified Timeline and Target Logic
+## 2. Verified Timeline and Target Logic
 
 ### Actual shipping days
 
@@ -105,11 +100,9 @@ Delivery Status != "Shipping canceled"
 
 For canceled shipments, the target remains `0`.
 
-### Target Interpretation
+### Target interpretation
 
-`Late_delivery_risk` represents a delay between order creation and shipment, not a delay between order creation and final customer delivery.
-
-Verified timeline:
+`Late_delivery_risk` represents a delay between **order creation and shipment**, not a delay between order creation and final customer delivery.
 
 ```text
 Order creation
@@ -117,188 +110,285 @@ Order creation
 Pre-shipment / fulfillment process
     ↓
 Shipping date
+```
 
-### Interpretation
-
-The delay label measures the order-to-shipping period against the scheduled duration. It therefore includes time before shipment leaves the company and is not limited to transportation time after shipment.
-
----
-
-## 4. Prediction-Time Contract
-
-### Working prediction point
-
-> Predict late-delivery risk at **order creation time**, before the actual shipping date and realized shipping duration are known.
-
-A feature is valid only if it would genuinely be available at that moment.
+The dataset does not contain a verified final-customer delivery timestamp. The label therefore measures fulfillment / pre-shipment delay against the scheduled duration and should not be interpreted as a last-mile delivery-delay label.
 
 ---
 
-## 5. Feature Availability / Leakage Audit
+## 3. Prediction-Time Contract and Leakage Rule
+
+### Prediction point
+
+> Predict late-shipment risk at **order creation time**, before the actual shipping date and realized shipping duration are known.
+
+A model feature is valid only if it would genuinely be available at that point.
 
 ### Confirmed future information or target leakage
 
-Do not use as model features:
+Never use these as model inputs:
 
-- `Days for shipping (real)`
-- `Delivery Status`
-- `shipping date (DateOrders)`
-- `Late_delivery_risk` — target
+- `Days for shipping (real)` — realized future duration and direct target component.
+- `Delivery Status` — post-order outcome information and direct target component.
+- `shipping date (DateOrders)` — future timestamp.
+- `Late_delivery_risk` — target.
 
-### Likely available at order time
+`Order Status` is also excluded, but for a different reason: its snapshot timing cannot be verified and several values may represent post-order workflow states. It is treated as a potential leakage risk, not as confirmed leakage.
 
-- `Type`
-- `Days for shipment (scheduled)`
-- `Category Id`
-- `Category Name`
-- `Customer City`
-- `Customer Country`
-- `Customer Id`
-- `Customer Segment`
-- `Customer State`
-- `Customer Zipcode`
-- `Department Id`
-- `Department Name`
-- `Market`
-- `Order City`
-- `Order Country`
-- `Order Customer Id`
-- `order date (DateOrders)`
-- `Order Id`
-- `Order Item Cardprod Id`
-- `Order Item Discount`
-- `Order Item Discount Rate`
-- `Order Item Id`
-- `Order Item Product Price`
-- `Order Item Quantity`
-- `Sales`
-- `Order Item Total`
-- `Order Region`
-- `Order State`
-- `Order Zipcode`
-- `Product Card Id`
-- `Product Category Id`
-- `Product Name`
-- `Product Price`
-- `Shipping Mode`
+---
 
-These are not yet the final feature set; identifier leakage, cardinality, redundancy, usefulness, and split leakage still need review.
+## 4. Verified Feature Findings
 
-**Shipping Mode — observed predictive signal:**  
-Late-delivery rates differ substantially across shipping modes:
+This section records reusable dataset facts. Final model inclusion is defined once in the **Raw Feature Decision Registry**.
 
-- First Class: 95.3%
-- Second Class: 76.6%
-- Same Day: 45.7%
-- Standard Class: 38.1%
+### 4.1 Shipping service and target artifact
 
-This indicates that `Shipping Mode` has strong observed association with `Late_delivery_risk`.
+`Shipping Mode` has strong observed association with the target:
 
-**Current decision:** Retain `Shipping Mode` as a candidate model feature, provided its availability at order creation remains valid under the prediction-time contract.
+- First Class: 95.3% late
+- Second Class: 76.6% late
+- Same Day: 45.7% late
+- Standard Class: 38.1% late
 
-**Shipping Mode / Scheduled Days redundancy:**  
-`Shipping Mode` and `Days for shipment (scheduled)` are deterministically mapped across all 180,519 rows:
+`Shipping Mode` and `Days for shipment (scheduled)` are deterministically mapped across all rows:
 
-- `Same Day` ↔ 0 scheduled days
-- `First Class` ↔ 1 scheduled day
-- `Second Class` ↔ 2 scheduled days
-- `Standard Class` ↔ 4 scheduled days
+```text
+Same Day       ↔ 0 scheduled days
+First Class    ↔ 1 scheduled day
+Second Class   ↔ 2 scheduled days
+Standard Class ↔ 4 scheduled days
+```
 
-Therefore, these two columns encode the same scheduling information.
+They encode the same scheduling information; the baseline keeps `Shipping Mode` and drops `Days for shipment (scheduled)`.
 
-**Order-hour / Same Day target artifact:**  
-`order_hour`, derived from `order date (DateOrders)`, shows a strong relationship with `Late_delivery_risk` for `Same Day` orders.
+#### Same-Day / order-hour artifact
 
-For all 9,737 `Same Day` orders, the exact elapsed time between order creation and shipping is exactly 12 hours.
+For all **9,737 Same Day** orders, exact elapsed time from order creation to shipping is exactly **12 hours**.
 
-Because `Days for shipping (real)` is based on calendar-date difference rather than exact elapsed hours:
+Because `Days for shipping (real)` uses calendar-date difference:
 
-- orders placed during hours `00–11` remain on the same calendar day and have `Days for shipping (real) = 0`
-- orders placed during hours `12–23` cross midnight and have `Days for shipping (real) = 1`
+- order hours `00–11` + 12 hours stay on the same calendar date → real shipping days = 0
+- order hours `12–23` + 12 hours cross midnight → real shipping days = 1
 
-Since `Same Day` maps to `Days for shipment (scheduled) = 0`, this creates a near-deterministic relationship between `order_hour` and the target for Same Day orders.
+Since Same Day has scheduled days = 0, `order_hour` becomes nearly deterministic for the target within this shipping mode. This is **not classic future leakage** because order hour is available at prediction time, but it is a target-generation artifact. `order_hour` therefore requires an ablation test before final use.
 
-This is not classic future-information leakage because `order_hour` is available at order creation. However, it reflects a target-generation artifact based on calendar-day boundaries.
+### 4.2 Temporal features
 
-**Current decision:** Keep `order_hour` under evaluation and compare model performance with and without it. If retained, document that part of its predictive power comes from this target-definition rule.
+Year-aware monthly late rates are generally close to the overall target rate and do not show a strong consistent seasonal pattern. Day-of-week association is also weak.
 
-**Current decision:** Do not use both simultaneously as independent model features. The final retained representation will be selected during feature engineering.
+- `order_month`: weak / inconsistent standalone signal.
+- `order_dayofweek`: weak standalone signal.
+- Raw `order date (DateOrders)` is not passed directly to the model; it is retained only as the source for engineered time features and split logic.
 
-### Exclude for identity / privacy / low modeling value
+### 4.3 Geographic hierarchy and signal
 
-- `Customer Email`
-- `Customer Fname`
-- `Customer Lname`
-- `Customer Password`
-- `Customer Street`
-- `Product Image`
+`Market` contains 5 categories and `Order Region` contains 23. Each `Order Region` belongs to exactly one `Market`, so `Market` is a coarser redundant representation. Late rates by both are mostly close to the overall target rate; `Order Region` is retained for possible interaction effects.
 
-### Ambiguous — verify before use
+Customer geography:
 
-- `Benefit per order`
-- `Sales per customer`
-- `Latitude`
-- `Longitude`
-- `Order Item Profit Ratio`
-- `Order Profit Per Order`
-- `Order Status`
-- `Product Description`
-- `Product Status`
+- `Customer Country`: 2 categories with nearly identical late rates.
+- `Customer State`: 46 observed values and retained as the main customer-location representation.
+- `Customer City`: 563 values; too granular relative to state for the baseline.
+- `Customer Zipcode`: 996 values; higher-cardinality and geographically redundant.
+- Three `Customer State` rows contain ZIP-like invalid values (`91732`, `95758`); treat them as missing during preprocessing.
+- `Latitude` / `Longitude` align with customer-location information in inspected records and are excluded as high-cardinality geographic detail that is not directly aligned with the order-to-shipping target.
 
-### `Order Status`
+Order destination geography:
 
-**Status:** Ambiguous — requires timing verification.
+- `Order Country`: 164 values; retained as the detailed destination feature.
+- `Order State`: 1,089 values; many very small groups produce unstable 0% / 100% late rates.
+- `Order City`: 3,597 values; too granular for the baseline.
+- `Order Zipcode`: 86.24% missing and undocumented in the description file.
 
-The source documentation lists workflow states such as `PENDING_PAYMENT`, `PROCESSING`, `COMPLETE`, `CANCELED`, and `PAYMENT_REVIEW`, but does not specify when the recorded status was captured relative to order creation.
+Repeated state/city names can appear under multiple countries or regions, so non-unique `State → Country` or `City → State` mappings are not by themselves evidence of corruption.
 
-Observed data shows that `CANCELED` and `SUSPECTED_FRAUD` records always have `Late_delivery_risk = 0`, while other statuses have a target distribution close to the overall dataset distribution.
+### 4.4 Product, category, and department representations
 
-This makes `Order Status` potentially informative, but not yet safe to use.
+Verified mappings:
 
-**Current decision:** Keep it excluded from model features until prediction-time availability is verified.
+```text
+Category Id       → Category Name      (one-to-one from ID to name)
+Category Id       = Product Category Id (all rows)
+Product Card Id   → Product Name       (one-to-one from ID to name)
+Product Card Id   = Order Item Cardprod Id (all rows)
+Department Id     → Department Name    (one-to-one from ID to name)
+Product Name      → Product Price      (each product name has one price)
+Order Item Product Price = Product Price (all rows)
+```
 
-### Notebook-derived columns
+`Product Name` has 118 values while `Product Price` has 75, so multiple products can share a price. The baseline therefore retains the more informative human-readable names and drops redundant IDs / price representations.
 
-Created only for analysis, not raw model features:
+`Category Name` has 51 unevenly distributed categories. Extreme late rates mostly occur in small groups; standalone association is weak, but the feature is retained for possible interactions.
+
+### 4.5 Financial redundancy
+
+Verified relationships:
+
+```text
+Benefit per order = Order Profit Per Order                       (all rows)
+Sales per customer = Order Item Total                            (all rows)
+Sales = Order Item Product Price × Order Item Quantity           (all rows)
+Order Item Total ≈ Sales - Order Item Discount                   (cent-level precision)
+Order Item Discount Rate ≈ Order Item Discount / Sales           (after 2-decimal rounding in 179,834 / 180,519 rows; ~99.62%)
+```
+
+Additional observations:
+
+- `Order Item Profit Ratio` correlates strongly with the profit fields (`r ≈ 0.824`) but has almost no linear association with the target (`r ≈ -0.002`).
+- `Benefit per order` / `Order Profit Per Order` also show almost no linear association with the target (`r ≈ -0.004`).
+
+These are redundancy / prioritization findings, not confirmed target leakage. The baseline keeps `Order Item Discount` and `Order Item Quantity` while excluding overlapping financial representations.
+
+### 4.6 Order Status
+
+The source documentation does not state when `Order Status` was captured relative to order creation. Values include workflow states such as `PENDING_PAYMENT`, `PROCESSING`, `COMPLETE`, `CANCELED`, and `PAYMENT_REVIEW`.
+
+Observed target behavior:
+
+- `CANCELED` rows always have target 0.
+- `SUSPECTED_FRAUD` rows always have target 0.
+- Other statuses are closer to the overall target distribution.
+
+Because timing cannot be verified and the field may contain post-order information close to the target, it is excluded from the baseline.
+
+### 4.7 Data-quality-only findings
+
+- `Product Description`: 100% missing.
+- `Product Status`: constant.
+- `Order Item Id`: unique for all 180,519 rows.
+- `Customer Id = Order Customer Id` across all rows.
+
+---
+
+## 5. Raw Feature Decision Registry
+
+**Rule:** every one of the dataset's 53 raw columns appears exactly once below. `KEEP` means retained as a baseline candidate; `DROP` means excluded from model inputs. Some dropped identifiers remain available for grouping, validation, or split logic.
+
+| Raw feature | Decision | Reason |
+|---|---|---|
+| `Type` | KEEP | Low-cardinality (4 values), available at order time, and shows some target variation; may help interactions. |
+| `Days for shipping (real)` | DROP | Future realized duration and direct component of target generation. |
+| `Days for shipment (scheduled)` | DROP | Deterministically equivalent to `Shipping Mode`; keep one representation only. |
+| `Benefit per order` | DROP | Exact duplicate of `Order Profit Per Order`; timing unverified and negligible standalone target association. |
+| `Sales per customer` | DROP | Exact duplicate of `Order Item Total`. |
+| `Delivery Status` | DROP | Future/post-order information and direct target-generation component. |
+| `Late_delivery_risk` | DROP | Target, never a model input. |
+| `Category Id` | DROP | Redundant with `Category Name`; prefer interpretable name. |
+| `Category Name` | KEEP | Human-readable category representation; 51 values; weak standalone signal but possible interaction value. |
+| `Customer City` | DROP | 563 categories; more granular and sparse than retained `Customer State`. |
+| `Customer Country` | DROP | Only 2 categories with nearly identical late rates. |
+| `Customer Email` | DROP | Identity/privacy field with no justified modeling value. |
+| `Customer Fname` | DROP | Identity/privacy field with no justified modeling value. |
+| `Customer Id` | DROP | High-cardinality identifier; retain only for grouping / split-leakage checks. |
+| `Customer Lname` | DROP | Identity/privacy field with no justified modeling value. |
+| `Customer Password` | DROP | Sensitive identity/security field; never use for modeling. |
+| `Customer Segment` | KEEP | Low-cardinality (3 values), cheap to encode, and may contribute through interactions despite weak standalone signal. |
+| `Customer State` | KEEP | Main customer-location representation; moderate cardinality. Three invalid ZIP-like values will be treated as missing. |
+| `Customer Street` | DROP | Identity/privacy and very granular location field. |
+| `Customer Zipcode` | DROP | 996 values and largely redundant with customer geography; prefer state. |
+| `Department Id` | DROP | One-to-one with `Department Name`; prefer interpretable name. |
+| `Department Name` | KEEP | Human-readable department representation; avoids redundant ID encoding. |
+| `Latitude` | DROP | High-cardinality customer-location detail, redundant with geography fields and not directly aligned with fulfillment-delay target. |
+| `Longitude` | DROP | Same rationale as `Latitude`. |
+| `Market` | DROP | Coarser hierarchy than `Order Region`; each region maps to one market. |
+| `Order City` | DROP | Very high cardinality (3,597); sparse and overfitting-prone for baseline. |
+| `Order Country` | KEEP | Moderate cardinality (164) and retained as detailed order-destination geography. |
+| `Order Customer Id` | DROP | Exact duplicate of `Customer Id`. |
+| `order date (DateOrders)` | DROP | Do not use raw timestamp directly; retain only for temporal feature engineering and split logic. |
+| `Order Id` | DROP | Identifier, not a predictive feature; retain only for grouping / validation / split checks. |
+| `Order Item Cardprod Id` | DROP | Exact duplicate of `Product Card Id`. |
+| `Order Item Discount` | KEEP | Primary retained discount representation after dropping the near-derived discount rate. |
+| `Order Item Discount Rate` | DROP | Approximately derived from discount / sales; 99.62% match after 2-decimal rounding. |
+| `Order Item Id` | DROP | Unique for every row; pure row identifier. |
+| `Order Item Product Price` | DROP | Exact duplicate of `Product Price`. |
+| `Order Item Profit Ratio` | DROP | Overlaps profit family; `r ≈ 0.824` with profit fields and negligible target association (`r ≈ -0.002`). |
+| `Order Item Quantity` | KEEP | Five well-supported values; little standalone signal but low cost and plausible interaction value. |
+| `Sales` | DROP | Exactly derived from item price × quantity; no independent information. |
+| `Order Item Total` | DROP | Derived from sales − discount to cent-level precision; redundant. |
+| `Order Profit Per Order` | DROP | Exact duplicate of `Benefit per order`; timing unverified and negligible standalone target association. |
+| `Order Region` | KEEP | 23-category geographic representation; more informative granularity than `Market` and may help interactions. |
+| `Order State` | DROP | High cardinality (1,089) with many tiny groups and unstable extreme rates. |
+| `Order Status` | DROP | Prediction-time timing cannot be verified; may contain post-order workflow information and target-proximate states. |
+| `Order Zipcode` | DROP | 86.24% missing and undocumented in source description. |
+| `Product Card Id` | DROP | Redundant with `Product Name`; prefer interpretable name. |
+| `Product Category Id` | DROP | Exact duplicate of `Category Id`. |
+| `Product Description` | DROP | 100% missing. |
+| `Product Image` | DROP | URL/image reference with no justified baseline modeling value. |
+| `Product Name` | KEEP | 118-category product representation; more informative than price because multiple products share the same price. |
+| `Product Price` | DROP | Functionally determined by `Product Name` and duplicated by `Order Item Product Price`; less informative than product identity. |
+| `Product Status` | DROP | Constant; no predictive information. |
+| `Shipping Mode` | KEEP | Available at order time, strong observed target association, and chosen over deterministically equivalent scheduled days. |
+| `shipping date (DateOrders)` | DROP | Future timestamp unavailable at prediction time. |
+
+### Baseline raw KEEP set
+
+```text
+Type
+Category Name
+Customer Segment
+Customer State
+Department Name
+Order Country
+Order Item Discount
+Order Item Quantity
+Order Region
+Product Name
+Shipping Mode
+```
+
+Identifiers such as `Customer Id`, `Order Id`, and the raw order timestamp may still be retained outside the model matrix for grouping, validation, split design, and reproducibility.
+
+---
+
+## 6. Engineered and Analysis-Only Columns
+
+These are **not part of the 53 raw columns**.
+
+### Engineered model candidates
+
+- `order_month` — **KEEP as candidate**; weak / inconsistent standalone association, but cheap temporal context.
+- `order_dayofweek` — **KEEP as candidate**; weak standalone association, but cheap temporal context.
+- `order_hour` — **INVESTIGATE / ABLATION**; available at prediction time, but part of its signal comes from the Same-Day calendar-boundary artifact. Compare model performance with and without it.
+
+### Analysis-only columns
 
 - `order_to_shipping_days`
 - `calculated_late`
 - `calendar_shipping_days`
 
-`calculated_late` and `calendar_shipping_days` expose target-generation logic and must never be used as predictive features.
+`calculated_late` and `calendar_shipping_days` expose target-generation logic and must never be predictive inputs. `order_to_shipping_days` is also derived using the future shipping timestamp and is analysis-only.
 
 ---
 
-## 6. Validation Status
+## 7. Validation Status
 
 ### Completed
 
 - [x] Official files obtained and stored locally.
 - [x] Raw files excluded from Git.
 - [x] Dataset loads successfully.
-- [x] Row/column counts verified.
-- [x] Target definition and distribution verified.
+- [x] Row / column counts verified.
+- [x] Target distribution verified.
 - [x] Description-file mismatch checked.
 - [x] Actual shipping-day derivation verified.
 - [x] Exact target-generation rule verified.
+- [x] Prediction point defined at order creation.
 - [x] Confirmed leakage fields identified.
-- [x] Working prediction timestamp defined.
-- [x] Initial feature-availability audit created.
+- [x] All 53 raw features reviewed and assigned a single KEEP / DROP decision.
+- [x] Major redundancy and cardinality checks completed.
 
 ### Pending
 
-- [ ] Verify ambiguous fields.
-- [ ] Finalize prediction timestamp.
-- [ ] Complete final leakage audit.
-- [ ] Check nulls, duplicates, data types, timestamps, and category cardinality.
-- [ ] Identify entity/grouping keys.
-- [ ] Define train/validation/test split strategy.
+- [ ] Run final data-quality audit: nulls, duplicate rows/entities, data types, timestamp validity, constants, and suspicious values.
+- [ ] Apply documented cleaning rules, including invalid `Customer State` values.
+- [ ] Identify entity / grouping keys for leakage-safe evaluation.
+- [ ] Define train / validation / test split strategy.
 - [ ] Create leakage-safe processed data.
-- [ ] Train the first leakage-safe baseline.
+- [ ] Train first baseline and run `order_hour` ablation.
 
 ---
 
-## 7. Storage / Reproducibility
+## 8. Storage / Reproducibility
 
 Local ML data:
 
@@ -321,316 +411,11 @@ The repository stores code, documentation, validation logic, setup instructions,
 
 ---
 
-## 8. Next Steps
+## 9. Next Steps
 
-1. Verify the ambiguous fields against the source description and business timing.
-2. Finalize the prediction timestamp.
-3. Complete the leakage audit.
-4. Run data-quality checks.
-5. Define grouping keys and train/validation/test split strategy.
+1. Run the final data-quality audit.
+2. Apply the documented cleaning rules.
+3. Define grouping keys and a leakage-safe train / validation / test split.
+4. Build the processed baseline feature set.
+5. Train the first leakage-safe baseline and compare results with vs. without `order_hour`.
 
-EDA and baseline modeling start after these checks are sufficiently complete.
-
-### Financial Feature Redundancy
-
-Verified relationships across all 180,519 rows:
-
-```text
-Sales ≈ Order Item Product Price × Order Item Quantity
-
-Order Item Total ≈ Sales - Order Item Discount
-
-Benefit per order = Order Profit Per Order
-```
-
-These relationships indicate that several financial fields are derived or redundant rather than independent features.
-
-**Current decision:** Treat these variables as secondary features for delay prediction. Avoid including multiple mathematically overlapping financial fields unless later EDA/modeling shows clear predictive value.
-
-**Important:** This is a redundancy issue, not confirmed target leakage.
-
-**Market / Order Region — observed target association:**  
-`Market` shows very little variation in late-delivery rate across categories, with all markets close to the overall target rate.
-
-`Order Region` shows somewhat more variation, but most regions still have similar late-delivery rates.
-
-**Current interpretation:** Geography may provide limited standalone predictive signal, although it may still become useful in combination with other features.
-
-**Category Name — observed target association:**  
-`Category Name` contains 51 categories with a highly uneven frequency distribution.
-
-Some categories show noticeably higher or lower late-delivery rates, but the largest categories remain close to the overall dataset rate. The most extreme rates are mostly associated with small sample sizes.
-
-**Current interpretation:** `Category Name` shows weak standalone association with `Late_delivery_risk`. It may still be useful in combination with other features, but it is not currently considered a strong individual predictor.
-
-**Order month — temporal association:**  
-Monthly late-delivery rates remain relatively stable across years, generally around the overall dataset rate.
-
-Some month-to-month variation exists, but no strong or consistent seasonal pattern is observed across years.
-
-**Current interpretation:** `order_month` shows weak standalone association with `Late_delivery_risk` and may still be retained as a secondary temporal feature.
-
-
-
-
-
-
-## Feature Decision Registry
-
-### KEEP — approved / retained as candidates
-
-- `Shipping Mode`
-  - Strong observed association with `Late_delivery_risk`.
-  - Available at order time, subject to final prediction-time validation.
-  - Do not use simultaneously with `Days for shipment (scheduled)` because they encode the same scheduling information.
-
-- `Days for shipment (scheduled)`
-  - Available at order time.
-  - Deterministically mapped to `Shipping Mode`.
-  - Retain only one of these two representations in the final feature set.
-
-- `Market`
-  - Available at order time.
-  - Weak standalone association, but may still contribute in combination with other features.
-
-- `Order Region`
-  - More granular geographic feature than `Market`.
-  - Weak standalone association, but may still contribute in combination with other features.
-
-- `Category Name`
-  - Weak standalone association.
-  - Retain as a candidate because interaction effects may still be useful.
-
-- `order_month`
-  - Weak and inconsistent standalone association.
-  - Retain as a secondary temporal candidate.
-
-- `order_dayofweek`
-  - Weak standalone association.
-  - Retain as a secondary temporal candidate.
-
-- `Category Name`
-  - Human-readable representation of the product category.
-  - `Category Id` maps one-to-one to `Category Name`, so only one representation is needed.
-
-- `Product Name`
-  - Human-readable representation of the product.
-  - `Product Card Id` maps one-to-one to `Product Name`, so only one representation is needed.
-  - Final usefulness will be evaluated during modeling because it has 118 unique categories.
-
-- `Product Name`
-  - **KEEP**
-  - More granular product representation.
-  - Each `Product Name` maps to exactly one `Product Price`.
-  - Retained because `Product Price` alone cannot uniquely identify the product.
-
-- `Type`
-  - **KEEP**
-  - Low-cardinality categorical feature with 4 values.
-  - Shows some variation in late-shipment rate, particularly for `TRANSFER`.
-  - Retained as a candidate order-time feature.
-
-- `Customer Segment`
-  - **KEEP**
-  - Low-cardinality categorical feature with 3 values.
-  - Shows very weak standalone association with `Late_delivery_risk`.
-  - Retained because it is inexpensive to encode and may still contribute through interactions.
-
-- `Customer State`
-  - **KEEP**
-  - Retained as the main customer-location feature.
-  - Only 3 rows contain invalid ZIP-like values (`91732`, `95758`); these will be treated as missing during preprocessing.
-
-- `Order Country`
-  - **KEEP**
-  - Destination-country feature with moderate cardinality (`164` values).
-  - May capture routing or geographic differences relevant to fulfillment.
-  - Retained as the main detailed order-destination feature.
-
-- `Order Item Quantity`
-  - **KEEP**
-  - Low-cardinality order-time feature with 5 well-supported values.
-  - Shows little standalone relationship with `Late_delivery_risk`, but is inexpensive to retain and may contribute through feature interactions.
-
-- `Order Item Quantity`
-  - **KEEP**
-  - Low-cardinality order-time feature with 5 well-supported values.
-  - Shows little standalone relationship with `Late_delivery_risk`, but is inexpensive to retain and may contribute through feature interactions.
-
-
-### DROP — excluded
-
-- `Days for shipping (real)`
-  - Future information / target leakage.
-
-- `Delivery Status`
-  - Future information and directly involved in target-generation logic.
-
-- `shipping date (DateOrders)`
-  - Future information.
-
-- `Late_delivery_risk`
-  - Target.
-
-- `Product Description`
-  - 100% missing.
-
-- `Product Status`
-  - Constant value.
-
-- `Customer Email`
-- `Customer Fname`
-- `Customer Lname`
-- `Customer Password`
-- `Customer Street`
-- `Product Image`
-  - Identity/privacy/low modeling value.
-
-- `Order Profit Per Order`
-  - **DROP**
-  - Exact duplicate of `Benefit per order`.
-  - Prediction-time availability is not verified.
-  - Shows essentially no standalone linear association with `Late_delivery_risk` (`r ≈ -0.004`).
-  - Low priority for the late-shipment prediction problem.
-
-- `Benefit per order`
-  - **DROP**
-  - Exact duplicate of `Order Profit Per Order`.
-  - Excluded for the same reasons.
-
-- `Latitude`
-- `Longitude`
-  - Customer-location coordinates.
-  - Not directly aligned with the order-to-shipping target.
-  - High-cardinality and largely redundant with customer geography fields.
-  - Excluded from the baseline feature set.
-
-- `Sales per customer`
-  - **DROP**
-  - Exact duplicate of `Order Item Total` across all 180,519 rows.
-  - Adds no independent information.
-
-- `Order Item Profit Ratio`
-  - **DROP**
-  - Strongly correlated with the other profit-related fields (`r ≈ 0.824`).
-  - Shows essentially no standalone linear association with `Late_delivery_risk` (`r ≈ -0.002`).
-  - Low priority for the late-shipment prediction problem and excluded from the baseline feature set.
-
-- `Order Status`
-  - **DROP**
-  - Prediction-time availability cannot be verified.
-  - The field contains workflow states that may represent post-order information.
-  - `CANCELED` and `SUSPECTED_FRAUD` records have `Late_delivery_risk = 0` for all observed rows, increasing target-proximity concerns.
-  - Excluded from the baseline feature set to avoid potential post-order information leakage.
-
-- `Order Item Id`
-  - **DROP**
-  - Unique for every row (`180,519` unique values).
-  - Pure row-level identifier with no expected predictive value.
-
-- `Order Id`
-  - **DROP as model feature**
-  - Order identifier, not a meaningful predictive feature.
-  - Retain only for grouping, validation, or train/test split checks.
-
-- `Customer Id`
-  - **DROP as raw model feature**
-  - High-cardinality customer identifier.
-  - May be retained only for grouping or split-leakage checks.
-
-- `Order Customer Id`
-  - **DROP**
-  - Exact duplicate of `Customer Id` across all rows.
-
-- `Order Zipcode`
-  - **DROP**
-  - `86.24%` missing values.
-  - Too incomplete for the baseline feature set.
-
-- `Product Category Id`
-  - **DROP**
-  - Exact duplicate of `Category Id` across all rows.
-
-- `Order Item Cardprod Id`
-  - **DROP**
-  - Exact duplicate of `Product Card Id` across all rows.
-
-- `Order Customer Id`
-  - **DROP**
-  - Exact duplicate of `Customer Id` across all rows.
-
-- `Category Id`
-  - **DROP**
-  - One-to-one mapping with `Category Name`.
-  - Dropped in favor of the more interpretable categorical representation.
-
-- `Product Card Id`
-  - **DROP**
-  - One-to-one mapping with `Product Name`.
-  - Dropped in favor of the more interpretable categorical representation.
-
-- `Department Id`
-  - **DROP**
-  - One-to-one mapping with `Department Name`.
-  - Dropped in favor of the more interpretable categorical representation.
-
-- `Product Price`
-  - **DROP**
-  - Deterministically derived from `Product Name`.
-  - Multiple products may share the same price, so price contains less information than product identity.
-
-- `Customer Country`
-  - **DROP**
-  - Only two categories with nearly identical late-shipment rates.
-
-- `Customer City`
-  - **DROP**
-  - Higher-cardinality geographic representation (`563` unique values).
-  - Dropped in favor of the lower-cardinality `Customer State`.
-
-- `Customer Zipcode`
-  - **DROP**
-  - High-cardinality (`996` unique values) and largely redundant with customer geography.
-  - Dropped in favor of `Customer State`.
-
-- `Order State`
-  - **DROP**
-  - High cardinality (`1,089` values).
-  - Many categories have very small sample sizes, producing unstable extreme late rates.
-  - Dropped to reduce overfitting risk.
-
-- `Order City`
-  - **DROP**
-  - Very high cardinality (`3,597` values).
-  - Too granular for the baseline model and likely to create sparse categories and overfitting.
-
-- `Order Item Discount Rate`
-  - **DROP**
-  - Approximately derived from `Order Item Discount / Sales`.
-  - The rounded relationship holds for 179,834 of 180,519 rows (~99.62%).
-  - Excluded to reduce redundant financial information.
-
-- `Order Item Product Price`
-  - **DROP**
-  - Exact duplicate of `Product Price` across all 180,519 rows.
-  - Adds no independent information.
-
-- `Sales`
-  - **DROP**
-  - Exactly derived from `Order Item Product Price × Order Item Quantity`.
-  - Adds no independent information.
-
-- `Order Item Total`
-  - **DROP**
-  - Derived from `Sales - Order Item Discount` to cent-level precision across the dataset.
-  - Redundant with retained order/item information.
-
-
-### INVESTIGATE — reviewed but not finalized
-
-- `order_hour` *(engineered from `order date (DateOrders)`)*
-  - **INVESTIGATE / MODEL EXPERIMENT**
-  - Available at prediction time.
-  - Shows useful target association.
-  - Part of its signal is driven by the `Same Day` calendar-boundary rule.
-  - Will be created during feature engineering and evaluated with an ablation test (model with vs. without `order_hour`).
