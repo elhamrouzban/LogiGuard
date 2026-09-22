@@ -398,8 +398,10 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
   - Weak standalone association, but may still contribute in combination with other features.
 
 - `Category Name`
-  - Weak standalone association.
-  - Retain as a candidate because interaction effects may still be useful.
+  - **KEEP**
+  - Human-readable category representation.
+  - Each `Category Id` maps to exactly one `Category Name`.
+  - `Category Name` is not strictly one-to-one with `Category Id` because `Electronics` is associated with two category IDs (`13` and `37`).
 
 - `order_month`
   - Weak and inconsistent standalone association.
@@ -561,9 +563,10 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
 
 - `Category Id`
   - **DROP**
-  - One-to-one mapping with `Category Name`.
-  - Dropped in favor of the more interpretable categorical representation.
-
+  - Identifier-style representation of category.
+  - Dropped in favor of the more interpretable `Category Name`.
+  - Note: the mapping is many-to-one rather than strictly one-to-one.
+  
 - `Product Card Id`
   - **DROP**
   - One-to-one mapping with `Product Name`.
