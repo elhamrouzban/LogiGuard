@@ -3,8 +3,6 @@
 ## Background
 This repository is for an AI Engineering Capstone project.
 
-The student has approximately 2.5 years of previous experience as a Web Developer and is transitioning into AI/ML Engineering.
-
 Preferred career directions:
 - AI Engineer / Applied AI Engineer
 - Machine Learning Engineer
