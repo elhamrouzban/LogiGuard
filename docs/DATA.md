@@ -1,7 +1,6 @@
 # Data Documentation
 
 **Project:** LogiGuard AI — AI Logistics Exception Management & Operations Copilot  
-**Current stage:** Week 1 — Data Validation / Leakage Audit  
 **Purpose:** Keep verified dataset facts, prediction-time assumptions, leakage decisions, validation status, and next data steps in one concise source of truth.
 
 ---
@@ -182,8 +181,6 @@ Do not use as model features:
 - `Product Price`
 - `Shipping Mode`
 
-These are not yet the final feature set; identifier leakage, cardinality, redundancy, usefulness, and split leakage still need review.
-
 **Shipping Mode — observed predictive signal:**  
 Late-delivery rates differ substantially across shipping modes:
 
@@ -224,26 +221,6 @@ This is not classic future-information leakage because `order_hour` is available
 
 **Current decision:** Do not use both simultaneously as independent model features. The final retained representation will be selected during feature engineering.
 
-### Exclude for identity / privacy / low modeling value
-
-- `Customer Email`
-- `Customer Fname`
-- `Customer Lname`
-- `Customer Password`
-- `Customer Street`
-- `Product Image`
-
-### Ambiguous — verify before use
-
-- `Benefit per order`
-- `Sales per customer`
-- `Latitude`
-- `Longitude`
-- `Order Item Profit Ratio`
-- `Order Profit Per Order`
-- `Order Status`
-- `Product Description`
-- `Product Status`
 
 ### `Order Status`
 
@@ -267,61 +244,8 @@ Created only for analysis, not raw model features:
 
 `calculated_late` and `calendar_shipping_days` expose target-generation logic and must never be used as predictive features.
 
----
-
-## 6. Validation Status
-
-### Completed
-
-- [x] Official files obtained and stored locally.
-- [x] Raw files excluded from Git.
-- [x] Dataset loads successfully.
-- [x] Row/column counts verified.
-- [x] Target definition and distribution verified.
-- [x] Description-file mismatch checked.
-- [x] Actual shipping-day derivation verified.
-- [x] Exact target-generation rule verified.
-- [x] Confirmed leakage fields identified.
-- [x] Working prediction timestamp defined.
-- [x] Initial feature-availability audit created.
-
-### Pending
-
-- [ ] Verify ambiguous fields.
-- [ ] Finalize prediction timestamp.
-- [ ] Complete final leakage audit.
-- [ ] Check nulls, duplicates, data types, timestamps, and category cardinality.
-- [ ] Identify entity/grouping keys.
-- [ ] Define train/validation/test split strategy.
-- [ ] Create leakage-safe processed data.
-- [ ] Train the first leakage-safe baseline.
-
----
-
-## 7. Storage / Reproducibility
-
-Local ML data:
-
-```text
-data/raw/
-data/interim/
-data/processed/
-```
-
-PostgreSQL will later store operational application data such as:
-
-```text
-shipments
-predictions
-model_versions
-agent_interactions
-```
-
 The repository stores code, documentation, validation logic, setup instructions, and later DVC metadata if used; it does not store the raw DataCo dataset.
-
 ---
-
-## 8. Next Steps
 
 1. Verify the ambiguous fields against the source description and business timing.
 2. Finalize the prediction timestamp.
@@ -380,26 +304,14 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
 ### KEEP — approved / retained as candidates
 
 - `Shipping Mode`
+  - **KEEP**
   - Strong observed association with `Late_delivery_risk`.
-  - Available at order time, subject to final prediction-time validation.
-  - Do not use simultaneously with `Days for shipment (scheduled)` because they encode the same scheduling information.
-
-- `Days for shipment (scheduled)`
-  - Available at order time.
-  - Deterministically mapped to `Shipping Mode`.
-  - Retain only one of these two representations in the final feature set.
-
-- `Market`
-  - Available at order time.
-  - Weak standalone association, but may still contribute in combination with other features.
+  - Retained as the shipping-service representation.
+  - `Days for shipment (scheduled)` is dropped because it is deterministically redundant with `Shipping Mode`.
 
 - `Order Region`
   - More granular geographic feature than `Market`.
   - Weak standalone association, but may still contribute in combination with other features.
-
-- `Category Name`
-  - Weak standalone association.
-  - Retain as a candidate because interaction effects may still be useful.
 
 - `order_month`
   - Weak and inconsistent standalone association.
@@ -408,15 +320,6 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
 - `order_dayofweek`
   - Weak standalone association.
   - Retain as a secondary temporal candidate.
-
-- `Category Name`
-  - Human-readable representation of the product category.
-  - `Category Id` maps one-to-one to `Category Name`, so only one representation is needed.
-
-- `Product Name`
-  - Human-readable representation of the product.
-  - `Product Card Id` maps one-to-one to `Product Name`, so only one representation is needed.
-  - Final usefulness will be evaluated during modeling because it has 118 unique categories.
 
 - `Product Name`
   - **KEEP**
@@ -452,11 +355,11 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
   - Low-cardinality order-time feature with 5 well-supported values.
   - Shows little standalone relationship with `Late_delivery_risk`, but is inexpensive to retain and may contribute through feature interactions.
 
-- `Order Item Quantity`
+- `Category Id`
   - **KEEP**
-  - Low-cardinality order-time feature with 5 well-supported values.
-  - Shows little standalone relationship with `Late_delivery_risk`, but is inexpensive to retain and may contribute through feature interactions.
-
+  - Retained as the categorical category-code representation.
+  - Data-quality review showed that `Category Name` is not semantically reliable for all categories.
+  - Must be treated as categorical, not numeric/ordinal.
 
 ### DROP — excluded
 
@@ -555,14 +458,11 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
   - **DROP**
   - Exact duplicate of `Product Card Id` across all rows.
 
-- `Order Customer Id`
+- `Category Name`
   - **DROP**
-  - Exact duplicate of `Customer Id` across all rows.
-
-- `Category Id`
-  - **DROP**
-  - One-to-one mapping with `Category Name`.
-  - Dropped in favor of the more interpretable categorical representation.
+  - Data-quality review found inconsistent semantic labeling.
+  - `Category Id = 13` and `Category Id = 37` are both labeled `Electronics`, despite representing different departments and product groups.
+  - Dropped to avoid collapsing distinct category groups into the same unreliable label.
 
 - `Product Card Id`
   - **DROP**
@@ -625,6 +525,10 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
   - Derived from `Sales - Order Item Discount` to cent-level precision across the dataset.
   - Redundant with retained order/item information.
 
+- `Market`
+  - ***DROP*** 
+  — coarser geographic representation than `Order Region`.
+
 
 ### INVESTIGATE — reviewed but not finalized
 
@@ -634,3 +538,259 @@ Some month-to-month variation exists, but no strong or consistent seasonal patte
   - Shows useful target association.
   - Part of its signal is driven by the `Same Day` calendar-boundary rule.
   - Will be created during feature engineering and evaluated with an ablation test (model with vs. without `order_hour`).
+
+
+## 9. Data Quality Audit
+
+The raw dataset was audited before preprocessing to identify missing values, duplicate records, structural inconsistencies, invalid values, datatype issues, and other data-quality problems.
+
+The raw data remains unchanged during the audit. Cleaning decisions are documented first and applied later when creating the processed modeling dataset.
+
+### 9.1 Missing Values
+
+Initial missing-value review found:
+
+- `Product Description`: 100% missing → already excluded.
+- `Order Zipcode`: 86.24% missing → already excluded.
+- `Customer Zipcode`: 3 missing values → no modeling action required because the feature is excluded.
+- `Customer Lname`: 8 missing values → no modeling action required because the feature is excluded.
+
+No other raw columns contain recorded missing values.
+
+Note: `Customer State` currently reports no missing values in the raw dataset, but 3 previously identified ZIP-like invalid values (`91732`, `95758`) will be converted to missing during preprocessing.
+
+### 9.2 Duplicate Rows and Order Structure
+
+- No exact duplicate rows were found.
+- The dataset contains 65,752 unique `Order Id` values across 180,519 rows.
+- Orders contain between 1 and 5 rows/items, with an average of approximately 2.75 rows per order.
+- 45,902 orders contain more than one row/item.
+- `Late_delivery_risk` is fully consistent within each `Order Id`.
+
+**Implication:**  
+The dataset is item-level, while the target is order-level. Train/validation/test splitting must prevent rows from the same `Order Id` from appearing in multiple splits.
+
+### 9.3 Category Mapping Consistency
+
+`Category Id` maps consistently to a single `Category Name`, but the relationship is not strictly one-to-one.
+
+**Final decision:** Retain `Category Id` as a categorical code and drop `Category Name`.
+
+`Category Name` is not semantically reliable because `Category Id = 13` and `Category Id = 37` are both labeled `Electronics` despite representing different departments and product groups.
+
+### 9.4 Numeric Value Validation
+
+- `Order Item Discount`
+  - No missing or negative values.
+  - Discount never exceeds `Sales`.
+  - High values were checked and were consistent with the corresponding sales amount and discount rate.
+  - No confirmed invalid outliers were found.
+
+- `Order Item Quantity`
+  - No missing values.
+  - Valid observed range: 1–5.
+  - No suspicious values were found.
+
+
+## Raw Feature Action List
+
+### KEEP / RETAIN
+
+1. `Type`: **KEEP** — categorical; use in baseline.
+
+2. `Category Id`: **KEEP** — categorical code; do not treat as continuous numeric.
+
+3. `Customer Segment`: **KEEP** — low-cardinality categorical feature.
+
+4. `Customer State`: **KEEP + CLEAN** — main customer geography feature; convert 3 invalid ZIP-like values to missing.
+
+5. `Department Name`: **KEEP** — human-readable department representation.
+
+6. `Order Country`: **KEEP** — destination-country categorical feature.
+
+7. `Order Item Discount`: **KEEP** — primary discount representation.
+
+8. `Order Item Quantity`: **KEEP** — low-cardinality order-time feature.
+
+9. `Order Region`: **KEEP** — lower-cardinality geographic representation.
+
+10. `Product Name`: **KEEP** — categorical product representation.
+
+11. `Shipping Mode`: **KEEP** — main shipping-service representation; strong target association.
+
+12. `Customer Id`: **RETAIN TECHNICALLY / DROP FROM MODEL** — use only for grouping and split checks.
+
+13. `Order Id`: **RETAIN TECHNICALLY / DROP FROM MODEL** — required for order-level grouping and leakage-safe splitting.
+
+14. `order date (DateOrders)`: **RETAIN FOR FEATURE ENGINEERING / DROP AS RAW MODEL FEATURE** — source for time features such as hour, day-of-week, and month.
+
+15. `Late_delivery_risk`: **TARGET** — prediction label only; never use as model input.
+
+
+### DROP
+
+16. `Days for shipping (real)`: **DROP** — future information / target leakage.
+
+17. `Days for shipment (scheduled)`: **DROP** — redundant with `Shipping Mode`.
+
+18. `Benefit per order`: **DROP** — exact duplicate of `Order Profit Per Order`; timing uncertain and low priority.
+
+19. `Sales per customer`: **DROP** — exact duplicate of `Order Item Total`.
+
+20. `Delivery Status`: **DROP** — future information and part of target-generation logic.
+
+21. `Category Name`: **DROP** — unreliable semantic labels; distinct category IDs can share the incorrect label `Electronics`.
+
+22. `Customer City`: **DROP** — high-cardinality customer geography; use `Customer State` instead.
+
+23. `Customer Country`: **DROP** — only two values with little useful variation.
+
+24. `Customer Email`: **DROP** — identity/privacy; no modeling value.
+
+25. `Customer Fname`: **DROP** — identity/privacy.
+
+26. `Customer Lname`: **DROP** — identity/privacy; also contains 8 missing values.
+
+27. `Customer Password`: **DROP** — sensitive identity field; no modeling value.
+
+28. `Customer Street`: **DROP** — identity/privacy and high cardinality.
+
+29. `Customer Zipcode`: **DROP** — high-cardinality customer geography; 3 missing values.
+
+30. `Department Id`: **DROP** — redundant code; use `Department Name`.
+
+31. `Latitude`: **DROP** — customer-location coordinates; high cardinality and redundant with customer geography.
+
+32. `Longitude`: **DROP** — customer-location coordinates; high cardinality and redundant with customer geography.
+
+33. `Market`: **DROP** — coarser geographic representation than `Order Region`.
+
+34. `Order City`: **DROP** — very high cardinality (`3,597`).
+
+35. `Order Customer Id`: **DROP** — exact duplicate of `Customer Id`.
+
+36. `Order Item Cardprod Id`: **DROP** — exact duplicate of `Product Card Id`.
+
+37. `Order Item Discount Rate`: **DROP** — approximately derived from `Order Item Discount / Sales`.
+
+38. `Order Item Id`: **DROP** — unique row identifier.
+
+39. `Order Item Product Price`: **DROP** — exact duplicate of `Product Price`.
+
+40. `Order Item Profit Ratio`: **DROP** — redundant profit-family feature with very weak target association.
+
+41. `Sales`: **DROP** — derived from item price × quantity.
+
+42. `Order Item Total`: **DROP** — derived from `Sales - Order Item Discount`.
+
+43. `Order Profit Per Order`: **DROP** — exact duplicate of `Benefit per order`; timing uncertain and low priority.
+
+44. `Order State`: **DROP** — high cardinality and many rare categories.
+
+45. `Order Status`: **DROP** — prediction-time availability not verified; possible post-order information.
+
+46. `Order Zipcode`: **DROP** — 86.24% missing.
+
+47. `Product Card Id`: **DROP** — identifier representation; use `Product Name`.
+
+48. `Product Category Id`: **DROP** — exact duplicate of `Category Id`.
+
+49. `Product Description`: **DROP** — 100% missing.
+
+50. `Product Image`: **DROP** — image/URL metadata; no baseline modeling value.
+
+51. `Product Price`: **DROP** — redundant with product identity and exact duplicate of `Order Item Product Price`.
+
+52. `Product Status`: **DROP** — constant column.
+
+53. `shipping date (DateOrders)`: **DROP** — future information / leakage.
+
+
+## retained / technical / target features a
+
+1. `Type`: **KEEP** — no missing values; 4 categories; treat as categorical.
+2. `Category Id`: **KEEP** — no missing; 51 categories; treat as categorical code.
+3. `Customer Segment`: **KEEP** — no missing; 3 categories; treat as categorical.
+4. `Customer State`: KEEP + CLEAN — 3 invalid ZIP-like values; treat as categorical.
+5. `Department Name`: **KEEP** — no missing; 11 categories; treat as categorical.
+6. `Order Country`: **KEEP + GROUP RARE CATEGORIES** — no missing; 164 categories; several very rare countries; treat as categorical and group infrequent values into `Other`.
+7. `Order Item Discount`: **KEEP** — no missing or negative values; high values are valid and consistent with `Sales` and `Discount Rate`; numeric feature.
+8. `Order Item Quantity`: **KEEP** — no missing; valid range 1–5; no suspicious values.
+9. `Order Region`: **KEEP** — no missing; 23 categories; no problematic rare categories.
+10. `Product Name`: **KEEP + GROUP RARE CATEGORIES** — no missing; 118 categories; several products have very low counts, so rare products should be grouped into `Other`.
+11. `Shipping Mode`: **KEEP** — no missing; 4 categories; strong target association; use as categorical.
+12. `Customer Id`: **RETAIN TECHNICALLY / DROP FROM MODEL** — no missing; customer identifier; use only for grouping and split-leakage checks.
+13. `Order Id`: **RETAIN TECHNICALLY / DROP FROM MODEL** — no missing; order identifier; use for order-level grouping and leakage-safe splitting.
+14. `order date (DateOrders)`: **RETAIN FOR FEATURE ENGINEERING / DROP AS RAW MODEL FEATURE** — no missing; parsed correctly as datetime; use for temporal features and time-based split.
+15. `Late_delivery_risk`: **TARGET** — no missing; binary label (0/1); never use as model input.
+
+
+
+## Customer-level entity structure + split leakage check
+
+### Customer-Level Structure
+
+- 20,652 unique customers.
+- 11,768 customers placed more than one order.
+- Customers have between 1 and 15 orders, with an average of 3.18 orders per customer.
+
+**Implication:**  
+If splitting only by `Order Id`, the same customer may appear in both train and test sets. This is not direct target leakage, but it can make evaluation slightly optimistic because customer-related patterns may appear in both splits.
+
+The final split strategy should compare:
+- order-level grouped splitting
+- time-based splitting
+- customer overlap between splits
+
+**Temporal consideration:**  
+Because customer behavior, products, and operational patterns may change over time, a time-based split will be considered to test how well the model generalizes from past data to future orders.
+
+### Rare-Category Handling
+
+- `Order Country`: group categories with fewer than 50 training rows into `Other`.
+  - 52 rare countries
+  - 930 affected rows (0.52%)
+
+- `Product Name`: group categories with fewer than 50 training rows into `Other`.
+  - 13 rare products
+  - 343 affected rows (0.19%)
+
+Rare-category thresholds must be learned from the training split only and then applied unchanged to validation/test data.
+
+### Order–Customer Consistency
+
+- Every `Order Id` is linked to exactly one `Customer Id`.
+- No order is associated with multiple customers.
+
+**Implication:**  
+Order-level grouping is structurally valid. Customer overlap across different orders can still occur and should be considered during split design.
+
+
+### Final Cleaning Decisions
+
+- `Customer State`
+  - Replace invalid ZIP-like values (`91732`, `95758`) with missing/unknown.
+
+- `Order Country`
+  - Group categories with fewer than 50 training rows into `Other`.
+
+- `Product Name`
+  - Group categories with fewer than 50 training rows into `Other`.
+
+- `Category Id`
+  - Keep as categorical code; do not treat as continuous numeric.
+
+- `order date (DateOrders)`
+  - Parse as datetime.
+  - Retain only for temporal feature engineering and split design.
+
+- `Customer Id`
+  - Retain only for grouping / split-leakage checks.
+
+- `Order Id`
+  - Retain only for order-level grouping / leakage-safe splitting.
+
+- `Late_delivery_risk`
+  - Keep as target only.
+
+- Drop all features previously marked `DROP` before modeling.
