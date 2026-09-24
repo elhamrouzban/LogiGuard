@@ -769,7 +769,7 @@ Order-level grouping is structurally valid. Customer overlap across different or
 ### Final Cleaning Decisions
 
 - `Customer State`
-  - Replace invalid ZIP-like values (`91732`, `95758`) with missing/unknown.
+  - Replace invalid ZIP-like values (`91732`, `95758`) with `CA`, based on the verified `Customer Zipcode → Customer State` mapping.
 
 - `Order Country`
   - Group categories with fewer than 50 training rows into `Other`.
@@ -794,3 +794,119 @@ Order-level grouping is structurally valid. Customer overlap across different or
   - Keep as target only.
 
 - Drop all features previously marked `DROP` before modeling.
+
+
+
+# Order-Level Aggregation
+
+The raw DataCo dataset is item-level: a single `Order Id` may appear across multiple rows because one order can contain multiple items.
+
+During validation, the following structure was confirmed:
+
+- 180,519 item-level rows.
+- 65,752 unique `Order Id` values.
+- All rows belonging to the same `Order Id` have:
+  - the same `order date (DateOrders)`,
+  - the same `shipping date (DateOrders)`,
+  - the same `Late_delivery_risk`,
+  - the same `Customer Id`.
+
+Because the prediction target is constant within each order, the modeling unit was changed from item-level rows to one row per order.
+
+### Within-Order Feature Consistency
+
+The retained features were checked to determine whether their values remain constant within an `Order Id`.
+
+The following features were fully consistent within each order:
+
+- `Type`
+- `Customer Segment`
+- `Customer State`
+- `Order Country`
+- `Order Region`
+- `Shipping Mode`
+- `Customer Id`
+- `order date (DateOrders)`
+- `Late_delivery_risk`
+
+These features can therefore be retained with the first observed value during order-level aggregation.
+
+The following retained features vary across items within the same order:
+
+- `Order Item Discount`
+- `Product Name`
+- `Category Id`
+- `Department Name`
+- `Order Item Quantity`
+
+Observed orders containing more than one value for each item-level feature:
+
+- `Order Item Discount`: 45,780 orders
+- `Product Name`: 44,578 orders
+- `Category Id`: 44,563 orders
+- `Department Name`: 41,471 orders
+- `Order Item Quantity`: 38,816 orders
+
+Because these features are item-level, selecting only the first value would discard information from the remaining items. They were therefore aggregated into order-level summary features.
+
+### Aggregation Rules
+
+The following aggregation rules were applied:
+
+- `Order Item Quantity` → `total_quantity`
+  - Sum of item quantities within each order.
+
+- `Order Item Discount` → `total_discount`
+  - Sum of item discounts within each order.
+
+- `Product Name` → `num_unique_products`
+  - Number of unique products within each order.
+
+- `Category Id` → `num_unique_categories`
+  - Number of unique product categories within each order.
+
+- `Department Name` → `num_unique_departments`
+  - Number of unique departments represented within each order.
+
+For features that are constant within an order, the first value was retained:
+
+- `Type`
+- `Customer Segment`
+- `Customer State`
+- `Order Country`
+- `Order Region`
+- `Shipping Mode`
+- `Customer Id`
+- `order date (DateOrders)`
+- `Late_delivery_risk`
+
+`Order Id` remains the grouping key and technical identifier.
+
+### Resulting Order-Level Dataset
+
+After aggregation:
+
+- Rows: 65,752
+- Unique `Order Id`: 65,752
+- Columns: 15
+- Missing values in retained columns: 0
+
+Target distribution:
+
+- `Late_delivery_risk = 1`: 54.82%
+- `Late_delivery_risk = 0`: 45.18%
+
+Aggregated feature ranges:
+
+- `total_quantity`: 1–24
+- `num_unique_products`: 1–5
+- `num_unique_categories`: 1–5
+- `num_unique_departments`: 1–5
+
+### Modeling Implication
+
+The order-level representation prevents multi-item orders from being counted multiple times during model training.
+
+Without aggregation, an order containing five items would contribute five training rows while a single-item order would contribute only one row, even though the target is defined at the order level.
+
+The aggregated dataset therefore aligns the modeling unit with the target unit: one row per order and one late-delivery label per order.
