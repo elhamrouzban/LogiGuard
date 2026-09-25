@@ -507,3 +507,66 @@ The split preserves chronological order so the model is trained on past orders a
 Split files are saved under:
 
 `data/interim/splits/`
+
+
+
+
+
+## Model Preprocessing
+
+Preprocessing is learned from the training split only and then applied unchanged to validation and test data.
+
+### Rare-Category Handling
+
+- `Order Country` categories with fewer than 50 training observations are mapped to `Other`.
+- The frequent-category list is derived only from the training data.
+- Unseen countries in validation/test are also mapped to `Other`.
+
+### Feature Encoding
+
+Categorical features are encoded using:
+
+`OneHotEncoder(handle_unknown="ignore")`
+
+Categorical features:
+
+- `Type`
+- `Customer Segment`
+- `Customer State`
+- `Order Country`
+- `Order Region`
+- `Shipping Mode`
+
+Numeric features are standardized using `StandardScaler`.
+
+Numeric features:
+
+- `total_quantity`
+- `total_discount`
+- `num_unique_products`
+- `num_unique_categories`
+- `num_unique_departments`
+- `order_hour`
+- `order_dayofweek`
+- `order_month`
+
+The fitted preprocessing transformer produces 168 model-ready features.
+
+
+
+
+## Baseline Model Comparison
+
+Two baseline classifiers have been evaluated on the validation set using the same preprocessed feature matrix.
+
+### Logistic Regression
+
+Validation performance:
+
+- Accuracy: `0.701`
+- Precision: `0.836`
+- Recall: `0.561`
+- F1-score: `0.671`
+- ROC-AUC: `0.743`
+
+The model provides strong precision, but misses a substantial number of actual late orders.
