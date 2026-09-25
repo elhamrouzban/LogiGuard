@@ -484,3 +484,26 @@ The cleaned, order-level dataset is saved as:
 `data/interim/order_level_clean.csv`
 
 This file contains the post-cleaning, pre-split dataset and is used as the input for train/validation/test splitting.
+
+
+## Train / Validation / Test Split
+
+A chronological 70/15/15 split was used on the order-level dataset.
+
+- Train: 46,026 orders
+  - 2015-01-01 → 2017-03-16
+  - Late rate: 54.85%
+
+- Validation: 9,863 orders
+  - 2017-03-16 → 2017-09-05
+  - Late rate: 54.50%
+
+- Test: 9,863 orders
+  - 2017-09-05 → 2018-01-31
+  - Late rate: 55.05%
+
+The split preserves chronological order so the model is trained on past orders and evaluated on later orders.
+
+Split files are saved under:
+
+`data/interim/splits/`
