@@ -1,3 +1,13 @@
+# Python cache / generated files
+__pycache__/
+*.pyc
+
+# Virtual environment
+.venv/
+venv/
+
+
+# OS / editor files
 .DS_Store
 
 # Local datasets
@@ -12,10 +22,8 @@ data/processed/*
 
 # Keep data documentation in Git
 !data/README.md
-
-.venv/
+presentation
 
 # Local exploratory notebooks
 notebooks/project_screenshots
 
-presentation
