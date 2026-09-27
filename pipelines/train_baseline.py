@@ -1,3 +1,6 @@
+from pathlib import Path
+import joblib
+
 from src.data.cleaning import load_and_clean_data
 from src.data.aggregation import aggregate_to_order_level
 from src.data.splitting import time_based_split
@@ -19,6 +22,11 @@ from src.models.baseline import (
 
 from src.models.evaluation import evaluate_classifier
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MODEL_DIR = PROJECT_ROOT / "models"
+
+MODEL_PATH = MODEL_DIR / "baseline_logistic_regression.joblib"
+PREPROCESSOR_PATH = MODEL_DIR / "preprocessor.joblib"
 
 def main():
     # 1. Load and clean raw data
@@ -87,7 +95,17 @@ def main():
     print("\nConfusion Matrix:")
     print(metrics["confusion_matrix"])
 
+    # 11. Save fitted artifacts
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
+    joblib.dump(model, MODEL_PATH)
+    joblib.dump(preprocessor, PREPROCESSOR_PATH)
+
+    print("\nSaved artifacts:")
+    print(MODEL_PATH)
+    print(PREPROCESSOR_PATH)
+
+
 
 if __name__ == "__main__":
     main()
-    

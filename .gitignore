@@ -27,3 +27,5 @@ presentation
 # Local exploratory notebooks
 notebooks/project_screenshots
 
+# Model artifacts
+models/*.joblib
