@@ -100,3 +100,28 @@ Current observations:
 - Random Forest and XGBoost are the main candidates for hyperparameter tuning.
 
 ### Random Forest and XGBoost are the main candidates for hyperparameter tuning.
+
+## Model Tunings
+
+### Tuned Random Forest
+
+Best configuration:
+
+- `n_estimators = 200`
+- `max_depth = 20`
+- `min_samples_leaf = 5`
+- `max_features = "sqrt"`
+
+Validation results:
+
+- Accuracy: `0.719`
+- Precision: `0.848`
+- Recall: `0.590`
+- F1-score: `0.696`
+- ROC-AUC: `0.770`
+
+The tuned Random Forest substantially reduced the severe overfitting seen in the unrestricted model.
+
+Training and validation Accuracy/F1 are now closely aligned, although a remaining ROC-AUC gap (`0.856` vs `0.770`) indicates some residual overfitting.
+
+Compared with the default Random Forest, tuning improved Accuracy, Precision, and ROC-AUC while reducing Recall.
