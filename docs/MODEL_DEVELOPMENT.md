@@ -267,6 +267,59 @@ Logistic Regression remained useful as a fast and interpretable baseline but sho
 No final production model is selected solely from this table. Model selection must also consider generalization, threshold behavior, operational trade-offs, and the business cost of false positives and false negatives.
 
 
+
+### XGBoost Second-Stage Tuning
+
+A second-stage XGBoost tuning pass was performed to refine the search around the best configuration found during the first tuning stage.
+
+The second-stage search focused on narrower ranges around the previous best values and, for the first time, explicitly compared multiple `colsample_bytree` values.
+
+Best Stage 2 configuration by validation ROC-AUC:
+
+- `n_estimators = 150`
+- `max_depth = 5`
+- `learning_rate = 0.07`
+- `min_child_weight = 1`
+- `subsample = 1.0`
+- `colsample_bytree = 0.7`
+
+Stage 2 results:
+
+| Metric | Train | Validation |
+|---|---:|---:|
+| Accuracy | 0.721 | 0.718 |
+| Precision | 0.858 | 0.844 |
+| Recall | 0.588 | 0.592 |
+| F1-score | 0.698 | 0.696 |
+| ROC-AUC | 0.808 | 0.772 |
+
+Timing for the selected Stage 2 configuration:
+
+- Training time: `0.291 s`
+- Validation prediction time: `0.0113 s`
+
+Compared with the first-stage tuned XGBoost model:
+
+| Metric | Stage 1 | Stage 2 |
+|---|---:|---:|
+| Validation Accuracy | 0.7184 | 0.7180 |
+| Validation Precision | 0.8451 | 0.8442 |
+| Validation Recall | 0.5918 | 0.5918 |
+| Validation F1 | 0.6961 | 0.6958 |
+| Validation ROC-AUC | 0.7715 | 0.7717 |
+| Train-Validation ROC-AUC Gap | 0.0356 | 0.0360 |
+| Training Time | 0.361 s | 0.291 s |
+| Prediction Time | 0.0138 s | 0.0113 s |
+
+Stage 2 produced a very small improvement in validation ROC-AUC while preserving the same Recall and reducing computational cost.
+
+The overall predictive performance of Stage 1 and Stage 2 remained effectively very similar.
+
+Stage 2 was retained as the primary XGBoost candidate because it achieved the highest validation ROC-AUC, preserved Recall, and required fewer trees with lower training and prediction time.
+
+No further hyperparameter tuning stage was performed because the second-stage improvement was marginal, suggesting diminishing returns from additional tuning on the same validation set.
+
+
 ## Model Selection Analysis
 
 After hyperparameter tuning, the untuned Logistic Regression baseline was compared with the tuned Decision Tree, Random Forest, and XGBoost models.
@@ -287,4 +340,8 @@ Random Forest remained competitive but showed a larger train-validation ROC-AUC 
 
 Logistic Regression was retained as the baseline and was not selected for further threshold optimization.
 
-Based on this comparison, tuned XGBoost was selected as the primary model candidate for threshold tuning.
+Based on the full comparison, including second-stage XGBoost refinement, the Stage 2 tuned XGBoost model was selected as the primary model for the next development stage.
+
+This selection was based on its validation ROC-AUC, competitive Recall and F1, moderate train-validation gap, and relatively low computational cost.
+
+The selected model will next undergo threshold tuning before final evaluation on the untouched test set.
