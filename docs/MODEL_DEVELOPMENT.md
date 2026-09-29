@@ -514,3 +514,10 @@ Because the feature is available at prediction time and its removal materially r
 Its known relationship with the dataset's target-definition behavior remains a documented modeling limitation and should be reconsidered if the model is later validated on a different or more realistic logistics dataset.
 
 No changes were made to the selected Stage 2 XGBoost model based on this ablation experiment.
+
+
+
+
+## Save Final Model Artifacts
+
+The selected Stage 2 XGBoost model, fitted preprocessor, operating threshold, and model metadata are saved for reproducible inference and later API integration.

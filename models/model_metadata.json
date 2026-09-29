@@ -1,0 +1,25 @@
+{
+    "model_name": "Stage 2 XGBoost",
+    "threshold": 0.4,
+    "hyperparameters": {
+        "n_estimators": 150,
+        "max_depth": 5,
+        "learning_rate": 0.07,
+        "min_child_weight": 1,
+        "subsample": 1.0,
+        "colsample_bytree": 0.7
+    },
+    "validation_metrics_at_threshold_0.40": {
+        "precision": 0.681381,
+        "recall": 0.763907,
+        "f1": 0.720288
+    },
+    "validation_roc_auc": 0.771684,
+    "test_metrics_at_threshold_0.40": {
+        "accuracy": 0.6525,
+        "precision": 0.6406,
+        "recall": 0.8403,
+        "f1": 0.727,
+        "roc_auc": 0.7747
+    }
+}
