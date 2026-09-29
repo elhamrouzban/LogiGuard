@@ -178,17 +178,89 @@ After tuning, training ROC-AUC decreased from approximately `1.000` to `0.856`, 
 This substantially reduced the train-validation gap and improved generalization, although some remaining ROC-AUC gap indicates residual overfitting.
 
 
-### Tuned Model Comparison
 
-| Model | Val Accuracy | Val Precision | Val Recall | Val F1 | Val ROC-AUC | Train Time | Prediction Time |
+### Decision Tree Tuning
+
+A grid of 72 hyperparameter configurations was evaluated.
+
+The tuning search completed in approximately `18.04 seconds`.
+
+Best configuration by validation ROC-AUC:
+
+- `max_depth = 5`
+- `max_features = None`
+- `min_samples_leaf = 5`
+- `min_samples_split = 2`
+
+Best tuned Decision Tree results:
+
+| Metric | Train | Validation |
+|---|---:|---:|
+| Accuracy | 0.719 | 0.718 |
+| Precision | 0.857 | 0.846 |
+| Recall | 0.584 | 0.590 |
+| F1-score | 0.695 | 0.695 |
+| ROC-AUC | 0.776 | 0.767 |
+
+Timing for the selected configuration:
+
+- Training time: `0.115 s`
+- Validation prediction time: `0.0019 s`
+
+The default unrestricted Decision Tree showed severe overfitting, with perfect training performance and substantially weaker validation performance.
+
+After tuning, the train-validation ROC-AUC gap decreased to approximately `0.008`, while validation ROC-AUC improved from approximately `0.631` to `0.767`.
+
+The tuned Decision Tree therefore generalized much better than the default model and showed that the poor initial result was largely caused by excessive model complexity.
+
+
+### Tuning Strategy
+
+Logistic Regression was retained as the untuned baseline model.
+
+The three tree-based candidate models were initially evaluated using their default or near-default configurations before hyperparameter tuning.
+
+Initial validation ROC-AUC results were approximately:
+
+- Logistic Regression: `0.743`
+- Decision Tree: `0.631`
+- Random Forest: `0.762`
+- XGBoost: `0.764`
+
+XGBoost showed the strongest initial validation performance, while Random Forest was very close and therefore remained a competitive candidate.
+
+The default Decision Tree performed substantially worse on validation and achieved perfect training performance, indicating severe overfitting. It was therefore given a controlled tuning step to determine whether reducing model complexity could improve generalization.
+
+Hyperparameter tuning was therefore applied to:
+
+- XGBoost, because it was the strongest initial candidate.
+- Random Forest, because its initial performance was very close to XGBoost.
+- Decision Tree, because its poor validation result appeared to be caused by excessive model complexity and severe overfitting.
+
+Logistic Regression was not tuned because its role in the project is to provide a simple, interpretable baseline against which the more complex candidate models can be compared.
+
+This strategy avoids assuming that default hyperparameters represent the full potential of each candidate algorithm while preserving a stable baseline for comparison.
+
+
+### Final Tuned Model Comparison
+
+The untuned Logistic Regression baseline was compared with the best tuned configurations of Decision Tree, Random Forest, and XGBoost.
+
+| Model | Validation Accuracy | Precision | Recall | F1 | ROC-AUC | Training Time | Prediction Time |
 |---|---:|---:|---:|---:|---:|---:|---:|
+| Logistic Regression (Baseline) | 0.701 | 0.836 | 0.561 | 0.671 | 0.743 | 0.119 s | 0.0006 s |
+| Tuned Decision Tree | 0.718 | 0.846 | 0.590 | 0.695 | 0.767 | 0.115 s | 0.0019 s |
 | Tuned Random Forest | 0.719 | 0.848 | 0.590 | 0.696 | 0.770 | 1.707 s | 0.0778 s |
 | Tuned XGBoost | 0.718 | 0.845 | 0.592 | 0.696 | 0.771 | 0.361 s | 0.0138 s |
 
-The two tuned models produced very similar validation performance.
+The three tuned tree-based models achieved very similar validation performance.
 
-XGBoost achieved slightly higher ROC-AUC and Recall, while Random Forest achieved slightly higher Accuracy and Precision.
+XGBoost achieved the highest validation ROC-AUC (`0.771`) and slightly higher Recall (`0.592`) than the other tuned candidates.
 
-XGBoost was also substantially faster to train and predict for the selected configurations.
+Random Forest achieved slightly higher Accuracy and Precision, but required more training and prediction time.
 
-No final model has been selected yet.
+The tuned Decision Tree produced validation performance close to the ensemble models while being computationally inexpensive and showing the smallest train-validation ROC-AUC gap.
+
+Logistic Regression remained useful as a fast and interpretable baseline but showed lower validation ROC-AUC and F1 than the tuned candidate models.
+
+No final production model is selected solely from this table. Model selection must also consider generalization, threshold behavior, operational trade-offs, and the business cost of false positives and false negatives.
