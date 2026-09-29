@@ -82,46 +82,113 @@ XGBoost currently provides the strongest validation performance among the evalua
 The gap between training and validation performance indicates some overfitting, but it is substantially less severe than the unrestricted Decision Tree and Random Forest.
 
 
-## Model Comparison
+### Model Timing Comparison
 
-| Model | Accuracy | Precision | Recall | F1-score | ROC-AUC |
-|---|---:|---:|---:|---:|---:|
-| Logistic Regression | 0.701 | 0.836 | 0.561 | 0.671 | 0.743 |
-| Decision Tree | 0.634 | 0.663 | 0.670 | 0.666 | 0.631 |
-| Random Forest | 0.704 | 0.790 | 0.621 | 0.696 | 0.762 |
-| XGBoost | 0.710 | 0.806 | 0.616 | 0.698 | 0.764 |
+Training and prediction times were measured on the same machine using the same prepared training and validation datasets.
 
-Current observations:
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | Train Time (s) | Prediction Time (s) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Logistic Regression | 0.701 | 0.836 | 0.561 | 0.671 | 0.743 | 0.119 | 0.00058 |
+| Decision Tree | 0.634 | 0.663 | 0.670 | 0.666 | 0.631 | 1.667 | 0.00375 |
+| Random Forest | 0.704 | 0.790 | 0.621 | 0.696 | 0.762 | 83.850 | 1.06424 |
+| XGBoost | 0.710 | 0.806 | 0.616 | 0.698 | 0.764 | 0.245 | 0.00990 |
 
-- Logistic Regression remains the baseline reference and has the highest precision.
-- Decision Tree has the highest recall but shows severe overfitting.
-- Random Forest improves recall, F1-score, and ROC-AUC over the baseline, but also shows severe overfitting.
-- XGBoost currently has the strongest overall validation performance, with the highest Accuracy, F1-score, and ROC-AUC.
-- Random Forest and XGBoost are the main candidates for hyperparameter tuning.
+These timings are based on single runs and should be treated as development-time measurements rather than stable benchmark results. A repeated timing benchmark can be performed later if computational performance becomes part of final model selection.
 
-### Random Forest and XGBoost are the main candidates for hyperparameter tuning.
+### Initial timing results show that XGBoost provides the strongest validation performance among the screened models while remaining substantially faster to train than the default Random Forest.
 
-## Model Tunings
 
-### Tuned Random Forest
 
-Best configuration:
+# Model Tunings
+
+## Hyperparameter Tuning
+
+Hyperparameter tuning was performed using the training set for fitting and the validation set for model selection.
+
+Configurations were ranked primarily by validation ROC-AUC.
+
+The test set remained untouched during tuning and model selection.
+
+
+### XGBoost Tuning
+
+A grid of 32 hyperparameter configurations was evaluated.
+
+The tuning search completed in approximately `8.13 seconds`.
+
+Best configuration by validation ROC-AUC:
+
+- `n_estimators = 200`
+- `max_depth = 5`
+- `learning_rate = 0.05`
+- `min_child_weight = 1`
+- `subsample = 1.0`
+- `colsample_bytree = 0.8`
+
+Best tuned XGBoost results:
+
+| Metric | Train | Validation |
+|---|---:|---:|
+| Accuracy | 0.720 | 0.718 |
+| Precision | 0.858 | 0.845 |
+| Recall | 0.587 | 0.592 |
+| F1-score | 0.697 | 0.696 |
+| ROC-AUC | 0.807 | 0.771 |
+
+Timing for the selected configuration:
+
+- Training time: `0.361 s`
+- Validation prediction time: `0.0138 s`
+
+Compared with the default XGBoost model, tuning improved validation Accuracy, Precision, and ROC-AUC while slightly reducing Recall and F1.
+
+The train-validation ROC-AUC gap decreased substantially compared with the default XGBoost model, indicating improved generalization and reduced overfitting.
+
+
+### Random Forest Tuning
+
+A grid of 18 hyperparameter configurations was evaluated.
+
+Best configuration by validation ROC-AUC:
 
 - `n_estimators = 200`
 - `max_depth = 20`
 - `min_samples_leaf = 5`
 - `max_features = "sqrt"`
 
-Validation results:
+Best tuned Random Forest results:
 
-- Accuracy: `0.719`
-- Precision: `0.848`
-- Recall: `0.590`
-- F1-score: `0.696`
-- ROC-AUC: `0.770`
+| Metric | Train | Validation |
+|---|---:|---:|
+| Accuracy | 0.718 | 0.719 |
+| Precision | 0.858 | 0.848 |
+| Recall | 0.583 | 0.590 |
+| F1-score | 0.694 | 0.696 |
+| ROC-AUC | 0.856 | 0.770 |
 
-The tuned Random Forest substantially reduced the severe overfitting seen in the unrestricted model.
+Timing for the selected configuration:
 
-Training and validation Accuracy/F1 are now closely aligned, although a remaining ROC-AUC gap (`0.856` vs `0.770`) indicates some residual overfitting.
+- Training time: `1.707 s`
+- Validation prediction time: `0.0778 s`
 
-Compared with the default Random Forest, tuning improved Accuracy, Precision, and ROC-AUC while reducing Recall.
+The default Random Forest achieved perfect training performance, indicating severe overfitting.
+
+After tuning, training ROC-AUC decreased from approximately `1.000` to `0.856`, while validation ROC-AUC improved from approximately `0.762` to `0.770`.
+
+This substantially reduced the train-validation gap and improved generalization, although some remaining ROC-AUC gap indicates residual overfitting.
+
+
+### Tuned Model Comparison
+
+| Model | Val Accuracy | Val Precision | Val Recall | Val F1 | Val ROC-AUC | Train Time | Prediction Time |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Tuned Random Forest | 0.719 | 0.848 | 0.590 | 0.696 | 0.770 | 1.707 s | 0.0778 s |
+| Tuned XGBoost | 0.718 | 0.845 | 0.592 | 0.696 | 0.771 | 0.361 s | 0.0138 s |
+
+The two tuned models produced very similar validation performance.
+
+XGBoost achieved slightly higher ROC-AUC and Recall, while Random Forest achieved slightly higher Accuracy and Precision.
+
+XGBoost was also substantially faster to train and predict for the selected configurations.
+
+No final model has been selected yet.
