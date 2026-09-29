@@ -403,3 +403,55 @@ The selected operating threshold is therefore:
 `0.40`
 
 The test set remained untouched throughout model selection and threshold tuning and will only be used for the final model evaluation.
+
+
+
+
+## Final Test Evaluation
+
+After completing model selection and threshold tuning on the validation set, the selected Stage 2 XGBoost model was evaluated once on the untouched test set.
+
+The model configuration and operating threshold were fixed before this evaluation:
+
+- Selected model: Stage 2 tuned XGBoost
+- Selected operating threshold: `0.40`
+
+No additional tuning or threshold adjustment was performed using the test set.
+
+### Final Test Results
+
+| Metric | Test Result |
+|---|---:|
+| Accuracy | 0.653 |
+| Precision | 0.641 |
+| Recall | 0.840 |
+| F1 | 0.727 |
+| ROC-AUC | 0.775 |
+
+Confusion Matrix:
+
+|  | Predicted Not Late | Predicted Late |
+|---|---:|---:|
+| Actual Not Late | 1873 | 2560 |
+| Actual Late | 867 | 4563 |
+
+At the selected threshold of `0.40`, the final model correctly identified `4563` truly late orders and missed `867`.
+
+This corresponds to a Recall of `0.840`, meaning that approximately 84% of the truly late orders in the test period were detected.
+
+The model also produced `2560` False Positive alerts, resulting in a Precision of `0.641`. This reflects the intended Recall-oriented operating strategy: the system prioritizes detecting more real logistics exceptions at the cost of generating additional false alerts.
+
+The test ROC-AUC was `0.775`, compared with approximately `0.772` on the validation set. This indicates that the model's ranking ability remained broadly consistent on the unseen test period.
+
+Compared with validation performance at the same threshold, Recall increased while Precision decreased:
+
+| Metric | Validation | Test |
+|---|---:|---:|
+| Precision | 0.681 | 0.641 |
+| Recall | 0.764 | 0.840 |
+| F1 | 0.720 | 0.727 |
+| ROC-AUC | 0.772 | 0.775 |
+
+Overall, the final test results support the selected model and operating threshold for the current LogiGuard exception-management objective.
+
+The test set was not used to modify the model, hyperparameters, or classification threshold after this evaluation.
