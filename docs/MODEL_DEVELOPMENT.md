@@ -345,3 +345,61 @@ Based on the full comparison, including second-stage XGBoost refinement, the Sta
 This selection was based on its validation ROC-AUC, competitive Recall and F1, moderate train-validation gap, and relatively low computational cost.
 
 The selected model will next undergo threshold tuning before final evaluation on the untouched test set.
+
+
+
+## Selected Model Threshold Analysis
+
+After selecting the Stage 2 tuned XGBoost model as the primary model candidate, a threshold analysis was performed on the validation set.
+
+The model itself was not retrained during this stage. Instead, the predicted probabilities produced by the selected XGBoost model were kept fixed, and different classification thresholds were applied to understand how the operating point affects Precision, Recall, F1 score, False Positives, and False Negatives.
+
+Because LogiGuard is designed as an exception-management system, the main objective of threshold tuning was to detect a larger proportion of truly late orders while keeping the number of false alerts at a reasonable level.
+
+An initial threshold sweep was performed from `0.30` to `0.60` in increments of `0.05`. This analysis showed that lower thresholds significantly increased Recall and reduced False Negatives, but also increased the number of False Positive alerts.
+
+The initial sweep also showed that model behavior changed substantially around the `0.40–0.45` region. Therefore, a more detailed threshold analysis was performed between `0.35` and `0.45` using increments of `0.01`.
+
+### Refined Threshold Results
+
+| Threshold | Precision | Recall | F1 | False Positives | False Negatives | True Positives | True Negatives |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0.35 | 0.598 | 0.902 | 0.719 | 3256 | 526 | 4849 | 1232 |
+| 0.36 | 0.606 | 0.885 | 0.719 | 3098 | 617 | 4758 | 1390 |
+| 0.37 | 0.611 | 0.869 | 0.718 | 2973 | 704 | 4671 | 1515 |
+| 0.38 | 0.623 | 0.851 | 0.720 | 2764 | 801 | 4574 | 1724 |
+| 0.39 | 0.640 | 0.818 | 0.718 | 2471 | 976 | 4399 | 2017 |
+| 0.40 | 0.681 | 0.764 | 0.720 | 1920 | 1269 | 4106 | 2568 |
+| 0.41 | 0.754 | 0.678 | 0.714 | 1189 | 1731 | 3644 | 3299 |
+| 0.42 | 0.798 | 0.630 | 0.704 | 858 | 1988 | 3387 | 3630 |
+| 0.43 | 0.820 | 0.608 | 0.698 | 718 | 2106 | 3269 | 3770 |
+| 0.44 | 0.831 | 0.601 | 0.698 | 656 | 2144 | 3231 | 3832 |
+| 0.45 | 0.836 | 0.597 | 0.697 | 629 | 2166 | 3209 | 3859 |
+
+### Selected Operating Threshold
+
+Based on the refined threshold analysis, `0.40` was selected as the operating threshold for the Stage 2 XGBoost model.
+
+At this threshold, the validation performance was:
+
+- Precision: `0.681`
+- Recall: `0.764`
+- F1: `0.720`
+- True Positives: `4106`
+- False Positives: `1920`
+- False Negatives: `1269`
+- True Negatives: `2568`
+
+At the default threshold of `0.50`, the model achieved a Recall of `0.592` with `2194` False Negatives.
+
+By lowering the threshold from `0.50` to `0.40`, the model identified `925` additional truly late orders and reduced the number of False Negatives from `2194` to `1269`.
+
+This improvement comes with an increase in False Positive alerts from `587` to `1920`.
+
+For the current LogiGuard exception-management objective, this trade-off was considered acceptable because the system is intended to surface potentially high-risk orders for operational review rather than automatically execute decisions.
+
+The selected operating threshold is therefore:
+
+`0.40`
+
+The test set remained untouched throughout model selection and threshold tuning and will only be used for the final model evaluation.
