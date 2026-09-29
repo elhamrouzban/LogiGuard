@@ -455,3 +455,62 @@ Compared with validation performance at the same threshold, Recall increased whi
 Overall, the final test results support the selected model and operating threshold for the current LogiGuard exception-management objective.
 
 The test set was not used to modify the model, hyperparameters, or classification threshold after this evaluation.
+
+
+
+## Order Hour Ablation Analysis
+
+During earlier data exploration, `order_hour` was identified as a potentially sensitive feature because of its relationship with the dataset's target-definition behavior, especially for `Shipping Mode = Same Day`.
+
+For Same Day orders, the observed shipping duration followed a fixed 12-hour pattern. Because the target is based on the relationship between actual and scheduled shipping duration, the hour at which an order was created can partially reflect this dataset-specific target behavior.
+
+`order_hour` is available at prediction time and is therefore not considered direct data leakage. However, an ablation experiment was performed to determine how strongly the selected model depends on this feature.
+
+### Ablation Setup
+
+A new XGBoost model was trained using the same Stage 2 hyperparameters as the selected model, with `order_hour` removed from the feature set.
+
+All other modeling choices were kept unchanged.
+
+The ablation model was:
+
+- trained on the training set
+- evaluated on the validation set
+- evaluated using the same operating threshold of `0.40`
+
+The test set was not used for this experiment.
+
+### Validation Results
+
+| Metric | With `order_hour` | Without `order_hour` |
+|---|---:|---:|
+| Precision | 0.681 | 0.648 |
+| Recall | 0.764 | 0.759 |
+| F1 | 0.720 | 0.699 |
+| ROC-AUC | 0.772 | 0.739 |
+
+Confusion matrix without `order_hour`:
+
+|  | Predicted Not Late | Predicted Late |
+|---|---:|---:|
+| Actual Not Late | 2274 | 2214 |
+| Actual Late | 1295 | 4080 |
+
+Compared with the selected model, removing `order_hour` resulted in:
+
+- a ROC-AUC decrease of approximately `0.033`
+- a Precision decrease of approximately `0.033`
+- an F1 decrease of approximately `0.021`
+- only a small Recall decrease of approximately `0.005`
+
+The model without `order_hour` also produced more False Positive alerts while detecting nearly the same proportion of truly late orders.
+
+### Decision
+
+The ablation experiment shows that `order_hour` contributes meaningful predictive information, particularly to ranking quality and false-positive reduction.
+
+Because the feature is available at prediction time and its removal materially reduced validation performance, `order_hour` is retained in the selected model.
+
+Its known relationship with the dataset's target-definition behavior remains a documented modeling limitation and should be reconsidered if the model is later validated on a different or more realistic logistics dataset.
+
+No changes were made to the selected Stage 2 XGBoost model based on this ablation experiment.
