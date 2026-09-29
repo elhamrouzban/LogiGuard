@@ -263,4 +263,28 @@ The tuned Decision Tree produced validation performance close to the ensemble mo
 
 Logistic Regression remained useful as a fast and interpretable baseline but showed lower validation ROC-AUC and F1 than the tuned candidate models.
 
+
 No final production model is selected solely from this table. Model selection must also consider generalization, threshold behavior, operational trade-offs, and the business cost of false positives and false negatives.
+
+
+## Model Selection Analysis
+
+After hyperparameter tuning, the untuned Logistic Regression baseline was compared with the tuned Decision Tree, Random Forest, and XGBoost models.
+
+The tuned tree-based models produced very similar validation performance.
+
+XGBoost was selected as the primary candidate for threshold tuning because it provided the strongest overall balance of:
+
+- highest validation ROC-AUC (`0.771`)
+- slightly higher validation Recall (`0.592`)
+- validation F1 comparable to the other tuned models (`0.696`)
+- substantially lower training and prediction cost than Random Forest
+- a smaller train-validation ROC-AUC gap than Random Forest
+
+Decision Tree remained a strong secondary candidate because it showed very good generalization and very low computational cost, although its validation ROC-AUC was slightly lower.
+
+Random Forest remained competitive but showed a larger train-validation ROC-AUC gap and higher computational cost.
+
+Logistic Regression was retained as the baseline and was not selected for further threshold optimization.
+
+Based on this comparison, tuned XGBoost was selected as the primary model candidate for threshold tuning.
