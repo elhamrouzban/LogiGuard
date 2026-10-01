@@ -110,6 +110,17 @@ class Order(Base):
         cascade="all, delete-orphan",
     )
 
+    customer_id: Mapped[int] = mapped_column(
+    BigInteger,
+    nullable=False,
+    index=True,
+    )
+
+    order_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        nullable=False,
+    )
+
 
 class Prediction(Base):
     __tablename__ = "predictions"
