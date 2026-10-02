@@ -524,6 +524,29 @@ roc_auc:   0.7746903663674294
 
 - More advanced promotion rules are intentionally deferred.
 
+# 2026-10-02 — Updated and Versioned Baseline Training Pipeline
+
+### Completed
+
+- Updated `pipelines/train_baseline.py` to use the latest versioned processed dataset.
+- Removed raw-data cleaning and aggregation from baseline training.
+- Baseline and final-model training now use the same processed-data source and split logic.
+- Baseline Logistic Regression is now saved as a versioned training run.
+- Each baseline run stores:
+  - trained model;
+  - fitted preprocessor;
+  - metadata;
+  - validation metrics;
+  - test metrics.
+- Baseline runs are stored under `models/baseline/<run_id>/`.
+- Successfully executed and verified the updated baseline pipeline.
+
+### Decisions / Changes
+
+- Baseline models are benchmarks and are not promoted to `current_model.json`.
+- Baseline artifacts are versioned so historical comparisons remain reproducible.
+- Candidate/final models can be compared against stored baseline metrics using their metadata.
+
 ### Next Step
 
-Update the baseline training pipeline to use the versioned processed dataset.
+Synchronize project documentation, then continue with FastAPI and PostgreSQL integration.
