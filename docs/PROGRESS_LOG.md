@@ -214,3 +214,339 @@ Not blockers yet, but unresolved pre-start items remain:
 ### Next Step
 
 Complete the pre-start data gate beginning with the official DataCo dataset and description file.
+
+---
+
+# 2026-10-02 — Implementation Catch-Up and Current Architecture Audit
+
+### Completed
+
+Since the previous progress-log entry, the project moved from planning into working implementation.
+
+#### Data and feature pipeline
+
+- Added reusable raw-data loading, validation, cleaning, aggregation, splitting, and preprocessing code under `src/`.
+- Confirmed the primary raw dataset is loaded from:
+  - `data/raw/DataCoSupplyChainDataset.csv`
+- Implemented item-level cleaning and selection of leakage-safe model inputs.
+- Implemented order-level aggregation so model training uses one row per `Order Id`.
+- Implemented chronological train / validation / test splitting.
+- Implemented reproducible time-based feature engineering.
+- Implemented rare-country grouping learned from training data only.
+- Implemented a reusable `ColumnTransformer` with:
+  - `OneHotEncoder(handle_unknown="ignore")`
+  - `StandardScaler`
+
+#### Modeling
+
+- Completed model-development work in the modeling notebook.
+- Evaluated the main candidate model families.
+- Selected Stage 2 XGBoost as the current final model implementation.
+- Selected operating threshold `0.40`.
+- Final model hyperparameters currently used in the training pipeline include:
+  - `n_estimators=150`
+  - `max_depth=5`
+  - `learning_rate=0.07`
+  - `min_child_weight=1`
+  - `subsample=1.0`
+  - `colsample_bytree=0.7`
+  - `random_state=42`
+
+#### Reusable training pipelines
+
+- Added `pipelines/train_baseline.py`.
+- Added `pipelines/train_final_model.py`.
+- Moved major data/model logic out of notebooks into reusable Python modules.
+- Confirmed that retraining can be triggered manually with:
+
+```bash
+python -m pipelines.train_final_model
+```
+
+#### Model versioning
+
+- Changed final-model saving from fixed filenames to versioned run directories.
+- Each final training run now saves:
+  - model artifact;
+  - fitted preprocessor;
+  - model metadata.
+- Added `models/current_model.json` as a pointer to the model bundle currently selected for inference.
+- Confirmed that inference resolves the model, preprocessor, and metadata paths through this pointer.
+
+#### Inference
+
+- Added `src/models/prediction.py`.
+- Confirmed that prediction:
+  - reads `models/current_model.json`;
+  - loads the corresponding fitted model;
+  - loads the corresponding fitted preprocessor;
+  - loads metadata from the same run;
+  - retrieves the selected threshold;
+  - retrieves train-learned rare-country values;
+  - performs preprocessing;
+  - calculates late-delivery probability and binary prediction;
+  - records the originating model run ID in the result.
+
+#### FastAPI
+
+- Added a FastAPI application.
+- Added:
+  - `GET /health`
+  - `POST /predict`
+- Added a Pydantic request model.
+- Added an API test using FastAPI `TestClient`.
+
+#### PostgreSQL foundation
+
+- Added SQLAlchemy database configuration.
+- Added ORM models for:
+  - `orders`
+  - `predictions`
+- Added table-creation support.
+- Confirmed that the current API does not yet persist new orders or predictions to PostgreSQL.
+
+#### Tests
+
+- Added API coverage for:
+  - health endpoint;
+  - prediction endpoint.
+- Added a prediction smoke script.
+- Identified that the current prediction smoke script is not yet a true pytest test because it does not contain assertions inside a `test_*` function.
+
+#### Repository audit
+
+- Reviewed the actual current project structure rather than relying only on older planning documents.
+- Confirmed that no additional hidden data, training, inference, or database pipelines currently exist outside the inspected files.
+- Confirmed that several planning documents are outdated and must later be synchronized with the implemented architecture.
+
+### Decisions / Changes
+
+- The project is no longer considered to be in planning or model-selection mode.
+- Current work is focused on engineering the model lifecycle and end-to-end automation.
+- The following three runtime responsibilities will be separated clearly:
+
+```text
+Data Pipeline
+Raw data
+→ validation
+→ cleaning
+→ aggregation
+→ processed dataset
+
+Training Pipeline
+Processed dataset
+→ split
+→ training-time feature preparation
+→ fit preprocessor
+→ train model
+→ evaluate
+→ save versioned model bundle
+→ promote approved model
+
+Prediction Pipeline
+New order
+→ request validation
+→ inference-time preparation
+→ current approved model bundle
+→ prediction
+→ PostgreSQL persistence
+→ API response
+```
+
+- Training-time validation/test evaluation uses the newly trained in-memory model.
+- Online inference uses the model referenced through `current_model.json`.
+- The data-cleaning lifecycle should be separated from the model-training lifecycle.
+- The training pipeline should eventually consume a validated processed dataset rather than owning the full raw-data cleaning workflow.
+- Train/validation/test splitting will remain part of the training/evaluation lifecycle rather than being permanently fixed inside the data-cleaning pipeline.
+- Fitted/learned transformations must remain part of the model bundle and must be reused during inference.
+
+### Blockers / Open Questions
+
+- `train_final_model.py` currently performs validation and test evaluation twice; the duplicate evaluation block must be removed.
+- The current final training pipeline still starts directly from raw data instead of a separately materialized processed dataset.
+- A dedicated data-preparation pipeline does not yet exist.
+- The current API expects already-engineered model features rather than a raw operational order.
+- Training-time feature preparation and inference-time feature preparation are not yet represented by one explicit shared contract.
+- The API does not yet persist orders or predictions to PostgreSQL.
+- Database models and prediction outputs currently use slightly different model-identification fields and need alignment.
+- Current training automatically updates `current_model.json`; a future quality/promotion gate should prevent an unsuitable retrained model from replacing the approved model merely because it is newer.
+- MLflow, DVC, Prefect, Docker, monitoring, drift tracking, and CI/CD are still pending.
+- Several Markdown documents no longer represent the implemented state and must be updated incrementally as the architecture stabilizes.
+
+### Next Step
+
+Strengthen and verify the raw-data validation contract before extracting raw-data preparation into a dedicated data pipeline.
+
+---
+
+# 2026-10-02 — Raw-Data Validation Hardening
+
+### Completed
+
+- Expanded `src/data/validation.py` so invalid future raw data fails before cleaning and model training.
+- Added validation for:
+  - empty datasets;
+  - missing required columns;
+  - missing values in required fields;
+  - invalid/non-numeric values in numeric fields;
+  - infinite numeric values;
+  - blank text values;
+  - invalid target values;
+  - invalid order dates;
+  - negative quantity;
+  - negative discount;
+  - non-positive order IDs;
+  - non-positive customer IDs.
+- Kept deterministic correction/normalization separate from rejection of invalid data.
+- Verified the strengthened validation by running the full final-model training pipeline successfully.
+- The existing DataCo raw dataset passed the stricter validation rules.
+- The final training run completed successfully with unchanged validation/test behavior.
+
+Validation metrics from the verification run:
+
+```text
+accuracy:  0.6766703842644226
+precision: 0.6813806837039496
+recall:    0.7639069767441861
+f1:        0.7202876940619244
+roc_auc:   0.7716837872569746
+```
+
+Test metrics from the verification run:
+
+```text
+accuracy:  0.6525397951941599
+precision: 0.640600870419767
+recall:    0.8403314917127072
+f1:        0.7269975304708038
+roc_auc:   0.7746903663674294
+```
+
+### Decisions / Changes
+
+- Raw-data validation and raw-data cleaning are treated as separate responsibilities.
+- The validation layer should fail loudly for unsafe or ambiguous values rather than silently guessing corrections.
+- Cleaning should only make deterministic transformations that can be defended.
+- Future invalid-data failures can later be connected to logging, monitoring, and alerting instead of building a separate notification system at this stage.
+
+### Blockers / Open Questions
+
+- The raw validation rules currently reflect the known model/data contract and will need automated unit tests.
+- Exact production behavior for every possible unknown category or malformed request has not yet been implemented.
+- The dedicated data-preparation pipeline has not yet been extracted.
+
+
+# 2026-10-02 — Added Versioned Data Preparation Pipeline
+
+### Completed
+
+- Added `pipelines/prepare_data.py`.
+- The pipeline now:
+  - loads raw data;
+  - validates raw data;
+  - cleans item-level data;
+  - aggregates data to one row per order;
+  - saves a processed dataset.
+- Processed datasets are saved in timestamped folders so previous versions are preserved.
+- Timestamp format:
+  - `YYYY-MM-DD_HH-MM`
+- Verified the pipeline successfully created a processed dataset with 65,752 rows.
+
+### Decisions / Changes
+
+- Processed datasets must not overwrite previous versions.
+- Each data-preparation run creates a new timestamped dataset version.
+
+### Blockers / Open Questions
+
+- Training still reads raw data directly and does not yet consume the processed dataset.
+
+# 2026-10-02 — Training Uses Versioned Processed Data
+
+### Completed
+
+- Updated `pipelines/train_final_model.py` to load the latest processed dataset instead of starting from raw data.
+- Removed raw-data cleaning and aggregation from the training pipeline.
+- Kept train/validation/test splitting and training-time preprocessing inside the training workflow.
+- Changed model run timestamps to a readable date-and-time format:
+  - `YYYY-MM-DD_HH-MM`
+- Verified the training pipeline successfully after the refactor.
+- Validation and test metrics remained unchanged.
+- Cleaned up old model artifacts that were no longer needed.
+
+### Decisions / Changes
+
+- Data preparation and model training are now separate workflows.
+- Processed datasets and model runs are versioned by date and time.
+- Training consumes prepared order-level data instead of rebuilding it from raw data.
+
+### Blockers / Open Questions
+
+- Training still updates `current_model.json` automatically.
+- Model promotion still needs to be separated from training.
+
+# 2026-10-02 — Separated Model Training and Promotion
+
+### Completed
+
+- Updated `pipelines/train_final_model.py` so training no longer changes `current_model.json`.
+- Added `pipelines/promote_model.py`.
+- Verified that a new model version can be trained and saved without affecting the current model.
+- Verified that a selected run can be promoted manually.
+- Confirmed that `current_model.json` updates only during the promotion step.
+
+### Decisions / Changes
+
+- Training and model promotion are now separate workflows.
+- A newly trained model does not automatically become the current model.
+- Promotion is an explicit step.
+
+### Blockers / Open Questions
+
+- No automated model-quality gate exists yet before promotion.
+
+# 2026-10-02 — Added Model Promotion Quality Check
+
+### Completed
+
+- Updated `pipelines/promote_model.py`.
+- Added a lightweight quality check before model promotion.
+- Promotion now reads the selected model metadata.
+- A model can only be promoted when validation ROC-AUC is at least `0.75`.
+- Verified that promotion succeeds for a valid model run.
+
+### Decisions / Changes
+
+- Model promotion remains a separate manual step.
+- A minimal quality gate is used to prevent clearly weak models from becoming the current model.
+
+### Blockers / Open Questions
+
+- More advanced promotion rules are intentionally deferred.
+
+# 2026-10-02 — Updated and Versioned Baseline Training Pipeline
+
+### Completed
+
+- Updated `pipelines/train_baseline.py` to use the latest versioned processed dataset.
+- Removed raw-data cleaning and aggregation from baseline training.
+- Baseline and final-model training now use the same processed-data source and split logic.
+- Baseline Logistic Regression is now saved as a versioned training run.
+- Each baseline run stores:
+  - trained model;
+  - fitted preprocessor;
+  - metadata;
+  - validation metrics;
+  - test metrics.
+- Baseline runs are stored under `models/baseline/<run_id>/`.
+- Successfully executed and verified the updated baseline pipeline.
+
+### Decisions / Changes
+
+- Baseline models are benchmarks and are not promoted to `current_model.json`.
+- Baseline artifacts are versioned so historical comparisons remain reproducible.
+- Candidate/final models can be compared against stored baseline metrics using their metadata.
+
+### Next Step
+
+Synchronize project documentation, then continue with FastAPI and PostgreSQL integration.

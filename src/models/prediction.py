@@ -4,33 +4,54 @@ import json
 import joblib
 import pandas as pd
 
+from src.features.preprocessing import group_rare_countries
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MODELS_DIR = PROJECT_ROOT / "models"
 
-MODEL_PATH = MODELS_DIR / "xgboost_stage2.joblib"
-PREPROCESSOR_PATH = MODELS_DIR / "preprocessor.joblib"
-METADATA_PATH = MODELS_DIR / "model_metadata.json"
+CURRENT_MODEL_PATH = MODELS_DIR / "current_model.json"
 
 
 def load_inference_artifacts():
-    model = joblib.load(MODEL_PATH)
-    preprocessor = joblib.load(PREPROCESSOR_PATH)
+    with open(
+        CURRENT_MODEL_PATH,
+        "r",
+        encoding="utf-8",
+    ) as file:
+        current_model = json.load(file)
 
-    with open(METADATA_PATH, "r", encoding="utf-8") as file:
+    model_path = MODELS_DIR / current_model["model"]
+    preprocessor_path = MODELS_DIR / current_model["preprocessor"]
+    metadata_path = MODELS_DIR / current_model["metadata"]
+
+    model = joblib.load(model_path)
+    preprocessor = joblib.load(preprocessor_path)
+
+    with open(
+        metadata_path,
+        "r",
+        encoding="utf-8",
+    ) as file:
         metadata = json.load(file)
 
-    threshold = metadata["threshold"]
-
-    return model, preprocessor, threshold
+    return model, preprocessor, metadata
 
 
 def predict_late_risk(
     input_data: pd.DataFrame,
 ) -> pd.DataFrame:
-    model, preprocessor, threshold = load_inference_artifacts()
+    model, preprocessor, metadata = load_inference_artifacts()
 
-    prepared_data = preprocessor.transform(input_data)
+    threshold = metadata["threshold"]
+    rare_countries = metadata["rare_countries"]
+
+    prepared_input = group_rare_countries(
+        input_data,
+        rare_countries,
+    )
+
+    prepared_data = preprocessor.transform(prepared_input)
 
     probabilities = model.predict_proba(prepared_data)[:, 1]
 
@@ -45,9 +66,13 @@ def predict_late_risk(
 
     results["risk_label"] = results[
         "late_risk_prediction"
-    ].map({
-        0: "Not Late",
-        1: "Late",
-    })
+    ].map(
+        {
+            0: "Not Late",
+            1: "Late",
+        }
+    )
+
+    results["model_run_id"] = metadata["run_id"]
 
     return results

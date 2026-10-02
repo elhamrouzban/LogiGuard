@@ -800,3 +800,39 @@ Not required
 Major excluded scope:
 Kafka, Spark, Kubernetes, route optimization, GPS/AIS tracking, autonomous dispatching, large multi-agent systems
 ```
+
+
+
+# ADR-016 — Separate Data Preparation, Model Training, Baseline Tracking, and Model Promotion
+
+**Date:** 2026-10-02  
+**Status:** Accepted
+
+### Context
+
+The original training pipelines performed data cleaning and aggregation directly during model training, and model artifacts were not handled consistently across baseline and final-model runs.
+
+### Decision
+
+Use separate lifecycle stages:
+
+1. `prepare_data.py` validates, cleans, aggregates, and saves versioned processed datasets.
+2. `train_baseline.py` trains a versioned Logistic Regression benchmark from processed data.
+3. `train_final_model.py` trains versioned candidate model artifacts from processed data.
+4. `promote_model.py` explicitly promotes an approved candidate model.
+5. `current_model.json` points only to the promoted production candidate.
+
+Each training run stores its fitted preprocessor and metadata together with the model.
+
+Baseline runs are retained for reproducible benchmarking but are not promoted to the inference path.
+
+### Why
+
+This separation improves reproducibility, traceability, model comparison, and control over which model is used for inference.
+
+### Consequences
+
+- Training a candidate does not automatically make it the current model.
+- Processed datasets and training artifacts remain versioned.
+- Baseline metrics can be reused as a benchmark without retraining the baseline.
+- Online inference uses only the explicitly promoted model.

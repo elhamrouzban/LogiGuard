@@ -521,3 +521,124 @@ No changes were made to the selected Stage 2 XGBoost model based on this ablatio
 ## Save Final Model Artifacts
 
 The selected Stage 2 XGBoost model, fitted preprocessor, operating threshold, and model metadata are saved for reproducible inference and later API integration.
+
+---
+
+## Production Training and Model Lifecycle
+
+The modeling workflow has now been moved into reusable production-style pipelines.
+
+### Versioned Processed Data
+
+Run:
+
+```bash
+python -m pipelines.prepare_data
+```
+
+This pipeline:
+
+1. loads raw DataCo data;
+2. validates required schema and values;
+3. cleans known deterministic issues;
+4. aggregates item-level rows to order level;
+5. saves a versioned processed dataset.
+
+Output:
+
+```text
+data/processed/<run_id>/
+```
+
+### Versioned Baseline Training
+
+Run:
+
+```bash
+python -m pipelines.train_baseline
+```
+
+Each baseline run uses the latest processed dataset and stores:
+
+- Logistic Regression model;
+- fitted preprocessor;
+- metadata;
+- validation metrics;
+- test metrics.
+
+Output:
+
+```text
+models/baseline/<run_id>/
+```
+
+The baseline is a reproducible benchmark and is not promoted for inference.
+
+### Versioned Final-Model Training
+
+Run:
+
+```bash
+python -m pipelines.train_final_model
+```
+
+Each run stores:
+
+- Stage 2 XGBoost model;
+- fitted preprocessor;
+- metadata;
+- validation metrics;
+- test metrics;
+- threshold;
+- rare-country mapping;
+- hyperparameters.
+
+Training a candidate does not automatically change the inference model.
+
+### Model Promotion
+
+Run:
+
+```bash
+python -m pipelines.promote_model
+```
+
+The promotion pipeline:
+
+1. selects an existing model run;
+2. loads its metadata;
+3. checks the promotion quality gate;
+4. updates `models/current_model.json` only if the model passes.
+
+Current lightweight quality gate:
+
+```text
+validation ROC-AUC >= 0.75
+```
+
+### Current Lifecycle
+
+```text
+raw data
+   ↓
+prepare_data.py
+   ↓
+versioned processed dataset
+   ├──→ train_baseline.py
+   │       ↓
+   │    versioned baseline artifacts
+   │
+   └──→ train_final_model.py
+           ↓
+        versioned XGBoost candidate
+           ↓
+        promote_model.py
+           ↓
+        quality gate
+           ↓
+        current_model.json
+           ↓
+        inference / API
+```
+
+This separates data preparation, benchmarking, candidate training, and promotion so that training remains reproducible and the inference model changes only through an explicit promotion step.
