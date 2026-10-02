@@ -258,28 +258,6 @@ def main():
     # ---------------------------------------------------------
     # 14. Update pointer to current model
     # ---------------------------------------------------------
-    current_model = {
-        "run_id": run_timestamp,
-        "run_directory": run_timestamp,
-        "model": str(Path(run_timestamp) / model_filename),
-        "preprocessor": str(
-            Path(run_timestamp) / preprocessor_filename
-        ),
-        "metadata": str(
-            Path(run_timestamp) / metadata_filename
-        ),
-    }
-
-    with open(
-        current_model_path,
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            current_model,
-            file,
-            indent=4,
-        )
 
     # ---------------------------------------------------------
     # 15. Report saved artifacts
@@ -290,10 +268,6 @@ def main():
     print(f"Model:        {model_path}")
     print(f"Preprocessor: {preprocessor_path}")
     print(f"Metadata:     {metadata_path}")
-
-    print("\nCurrent model pointer")
-    print("---------------------")
-    print(current_model_path)
 
 
 if __name__ == "__main__":

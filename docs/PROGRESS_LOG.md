@@ -485,6 +485,26 @@ roc_auc:   0.7746903663674294
 - Training still updates `current_model.json` automatically.
 - Model promotion still needs to be separated from training.
 
+# 2026-10-02 — Separated Model Training and Promotion
+
+### Completed
+
+- Updated `pipelines/train_final_model.py` so training no longer changes `current_model.json`.
+- Added `pipelines/promote_model.py`.
+- Verified that a new model version can be trained and saved without affecting the current model.
+- Verified that a selected run can be promoted manually.
+- Confirmed that `current_model.json` updates only during the promotion step.
+
+### Decisions / Changes
+
+- Training and model promotion are now separate workflows.
+- A newly trained model does not automatically become the current model.
+- Promotion is an explicit step.
+
+### Blockers / Open Questions
+
+- No automated model-quality gate exists yet before promotion.
+
 ### Next Step
 
-Separate model training from model promotion so a new model does not automatically become the current model.
+Add a simple model-quality check before promotion.
