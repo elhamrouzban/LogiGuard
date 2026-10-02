@@ -30,6 +30,22 @@ def main():
     if len(metadata_files) != 1:
         raise ValueError("Expected exactly one metadata file.")
 
+    metadata_path = metadata_files[0]
+
+    with open(
+        metadata_path,
+        "r",
+        encoding="utf-8",
+    ) as file:
+        metadata = json.load(file)
+
+    validation_metrics = metadata["validation_metrics"]
+
+    if validation_metrics["roc_auc"] < 0.75:
+        raise ValueError(
+            "Model quality check failed: validation ROC-AUC is below 0.75."
+        )
+
     current_model = {
         "run_id": run_id,
         "run_directory": run_id,

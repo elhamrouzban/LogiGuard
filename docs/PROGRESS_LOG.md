@@ -505,6 +505,25 @@ roc_auc:   0.7746903663674294
 
 - No automated model-quality gate exists yet before promotion.
 
+# 2026-10-02 — Added Model Promotion Quality Check
+
+### Completed
+
+- Updated `pipelines/promote_model.py`.
+- Added a lightweight quality check before model promotion.
+- Promotion now reads the selected model metadata.
+- A model can only be promoted when validation ROC-AUC is at least `0.75`.
+- Verified that promotion succeeds for a valid model run.
+
+### Decisions / Changes
+
+- Model promotion remains a separate manual step.
+- A minimal quality gate is used to prevent clearly weak models from becoming the current model.
+
+### Blockers / Open Questions
+
+- More advanced promotion rules are intentionally deferred.
+
 ### Next Step
 
-Add a simple model-quality check before promotion.
+Update the baseline training pipeline to use the versioned processed dataset.
