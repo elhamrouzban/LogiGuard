@@ -435,6 +435,32 @@ roc_auc:   0.7746903663674294
 - Exact production behavior for every possible unknown category or malformed request has not yet been implemented.
 - The dedicated data-preparation pipeline has not yet been extracted.
 
+
+# 2026-10-02 — Added Versioned Data Preparation Pipeline
+
+### Completed
+
+- Added `pipelines/prepare_data.py`.
+- The pipeline now:
+  - loads raw data;
+  - validates raw data;
+  - cleans item-level data;
+  - aggregates data to one row per order;
+  - saves a processed dataset.
+- Processed datasets are saved in timestamped folders so previous versions are preserved.
+- Timestamp format:
+  - `YYYY-MM-DD_HH-MM`
+- Verified the pipeline successfully created a processed dataset with 65,752 rows.
+
+### Decisions / Changes
+
+- Processed datasets must not overwrite previous versions.
+- Each data-preparation run creates a new timestamped dataset version.
+
+### Blockers / Open Questions
+
+- Training still reads raw data directly and does not yet consume the processed dataset.
+
 ### Next Step
 
-Create the dedicated data-preparation pipeline that owns raw-data validation, cleaning, order-level aggregation, and creation of a reusable processed dataset.
+Update the training pipeline to load a processed dataset instead of cleaning raw data itself.
