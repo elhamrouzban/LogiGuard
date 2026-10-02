@@ -12,6 +12,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from xgboost import XGBClassifier
+from src.models.evaluation import evaluate_classifier
 
 from src.data.aggregation import aggregate_to_order_level
 from src.data.cleaning import load_and_clean_data
@@ -42,20 +43,6 @@ MODEL_PARAMS = {
     "random_state": 42,
     "eval_metric": "logloss",
 }
-
-
-def evaluate_at_threshold(model, X, y, threshold):
-    probabilities = model.predict_proba(X)[:, 1]
-    predictions = (probabilities >= threshold).astype(int)
-
-    return {
-        "accuracy": accuracy_score(y, predictions),
-        "precision": precision_score(y, predictions),
-        "recall": recall_score(y, predictions),
-        "f1": f1_score(y, predictions),
-        "roc_auc": roc_auc_score(y, probabilities),
-        "confusion_matrix": confusion_matrix(y, predictions).tolist(),
-    }
 
 
 def main():
@@ -143,17 +130,32 @@ def main():
         y_train,
     )
 
+    validation_metrics = evaluate_classifier(
+        model,
+        X_val_prepared,
+        y_val,
+        threshold=SELECTED_THRESHOLD,
+    )
+
+    test_metrics = evaluate_classifier(
+        model,
+        X_test_prepared,
+        y_test,
+        threshold=SELECTED_THRESHOLD,
+    )
+
+
     # ---------------------------------------------------------
     # 10. Evaluate at selected operating threshold
     # ---------------------------------------------------------
-    validation_metrics = evaluate_at_threshold(
+    validation_metrics = evaluate_classifier(
         model,
         X_val_prepared,
         y_val,
         SELECTED_THRESHOLD,
     )
 
-    test_metrics = evaluate_at_threshold(
+    test_metrics = evaluate_classifier(
         model,
         X_test_prepared,
         y_test,
