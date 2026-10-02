@@ -1,5 +1,7 @@
 from datetime import datetime
 from pathlib import Path
+import pandas as pd
+
 import json
 
 import joblib
@@ -14,8 +16,6 @@ from sklearn.metrics import (
 from xgboost import XGBClassifier
 from src.models.evaluation import evaluate_classifier
 
-from src.data.aggregation import aggregate_to_order_level
-from src.data.cleaning import load_and_clean_data
 from src.data.splitting import time_based_split
 from src.features.preprocessing import (
     CATEGORICAL_FEATURES,
@@ -30,6 +30,7 @@ from src.features.preprocessing import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = PROJECT_ROOT / "models"
+PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
 
 SELECTED_THRESHOLD = 0.40
 
@@ -45,9 +46,42 @@ MODEL_PARAMS = {
 }
 
 
+def load_latest_processed_data() -> pd.DataFrame:
+    run_dirs = sorted(
+        [
+            path
+            for path in PROCESSED_DATA_DIR.iterdir()
+            if path.is_dir()
+        ]
+    )
+
+    if not run_dirs:
+        raise FileNotFoundError(
+            "No processed dataset found. Run "
+            "'python -m pipelines.prepare_data' first."
+        )
+
+    latest_run_dir = run_dirs[-1]
+
+    csv_files = list(
+        latest_run_dir.glob("order_level_clean_*.csv")
+    )
+
+    if len(csv_files) != 1:
+        raise ValueError(
+            f"Expected exactly one processed dataset in "
+            f"{latest_run_dir}, found {len(csv_files)}."
+        )
+
+    return pd.read_csv(
+        csv_files[0],
+        parse_dates=["order date (DateOrders)"],
+    )
+
+
 def main():
     # Unique identifier for this training run
-    run_timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    run_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
 
     # File names for this model version
     model_filename = f"xgboost_stage2_{run_timestamp}.joblib"
@@ -67,13 +101,11 @@ def main():
     # ---------------------------------------------------------
     # 1. Load and clean historical raw data
     # ---------------------------------------------------------
-    df_clean = load_and_clean_data()
 
     # ---------------------------------------------------------
     # 2. Aggregate item-level data to order level
     # ---------------------------------------------------------
-    order_df = aggregate_to_order_level(df_clean)
-
+    order_df = load_latest_processed_data()
     # ---------------------------------------------------------
     # 3. Chronological train / validation / test split
     # ---------------------------------------------------------

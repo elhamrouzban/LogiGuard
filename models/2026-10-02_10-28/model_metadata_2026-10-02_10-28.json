@@ -1,7 +1,7 @@
 {
-    "run_id": "2026-10-02_090646",
+    "run_id": "2026-10-02_10-28",
     "model_name": "Stage 2 XGBoost",
-    "trained_at": "2026-10-02T09:06:47.686738+02:00",
+    "trained_at": "2026-10-02T10:28:36.546874+02:00",
     "threshold": 0.4,
     "hyperparameters": {
         "n_estimators": 150,

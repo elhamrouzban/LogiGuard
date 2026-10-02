@@ -461,6 +461,30 @@ roc_auc:   0.7746903663674294
 
 - Training still reads raw data directly and does not yet consume the processed dataset.
 
+# 2026-10-02 — Training Uses Versioned Processed Data
+
+### Completed
+
+- Updated `pipelines/train_final_model.py` to load the latest processed dataset instead of starting from raw data.
+- Removed raw-data cleaning and aggregation from the training pipeline.
+- Kept train/validation/test splitting and training-time preprocessing inside the training workflow.
+- Changed model run timestamps to a readable date-and-time format:
+  - `YYYY-MM-DD_HH-MM`
+- Verified the training pipeline successfully after the refactor.
+- Validation and test metrics remained unchanged.
+- Cleaned up old model artifacts that were no longer needed.
+
+### Decisions / Changes
+
+- Data preparation and model training are now separate workflows.
+- Processed datasets and model runs are versioned by date and time.
+- Training consumes prepared order-level data instead of rebuilding it from raw data.
+
+### Blockers / Open Questions
+
+- Training still updates `current_model.json` automatically.
+- Model promotion still needs to be separated from training.
+
 ### Next Step
 
-Update the training pipeline to load a processed dataset instead of cleaning raw data itself.
+Separate model training from model promotion so a new model does not automatically become the current model.
