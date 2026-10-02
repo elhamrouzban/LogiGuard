@@ -1,7 +1,7 @@
 {
-    "run_id": "2026-10-02_090342",
-    "run_directory": "2026-10-02_090342",
-    "model": "2026-10-02_090342/xgboost_stage2_2026-10-02_090342.joblib",
-    "preprocessor": "2026-10-02_090342/preprocessor_2026-10-02_090342.joblib",
-    "metadata": "2026-10-02_090342/model_metadata_2026-10-02_090342.json"
+    "run_id": "2026-10-02_090646",
+    "run_directory": "2026-10-02_090646",
+    "model": "2026-10-02_090646/xgboost_stage2_2026-10-02_090646.joblib",
+    "preprocessor": "2026-10-02_090646/preprocessor_2026-10-02_090646.joblib",
+    "metadata": "2026-10-02_090646/model_metadata_2026-10-02_090646.json"
 }

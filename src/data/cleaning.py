@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.data.validation import validate_raw_data
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_DATA_PATH = PROJECT_ROOT / "data" / "raw" / "DataCoSupplyChainDataset.csv"
@@ -64,8 +66,13 @@ def clean_item_level_data(df: pd.DataFrame) -> pd.DataFrame:
     return df_clean
 
 
-def load_and_clean_data(path: Path = RAW_DATA_PATH) -> pd.DataFrame:
-    """Load raw data and return the cleaned item-level dataset."""
+def load_and_clean_data(
+    path: Path = RAW_DATA_PATH,
+) -> pd.DataFrame:
+    """Load, validate, and clean the raw item-level dataset."""
 
     df = load_raw_data(path)
+
+    validate_raw_data(df)
+
     return clean_item_level_data(df)
