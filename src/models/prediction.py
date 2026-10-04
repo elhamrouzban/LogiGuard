@@ -74,5 +74,6 @@ def predict_late_risk(
     )
 
     results["model_run_id"] = metadata["run_id"]
+    results["threshold"] = threshold
 
     return results

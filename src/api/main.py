@@ -1,34 +1,47 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-import pandas as pd
+from datetime import datetime
 
+import pandas as pd
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+from src.database.connection import SessionLocal
+from src.database.orm_models import Order, Prediction
 from src.models.prediction import predict_late_risk
 
 
 app = FastAPI(
     title="LogiGuard API",
-    version="0.1.0",
+    version="0.3.0",
 )
 
 
 class OrderInput(BaseModel):
-    Type: str
-    Customer_Segment: str
-    Customer_State: str
-    Order_Country: str
-    Order_Region: str
-    Shipping_Mode: str
+    order_id: int
+    customer_id: int
 
-    total_quantity: float
-    total_discount: float
+    order_date: datetime
 
-    num_unique_products: int
-    num_unique_categories: int
-    num_unique_departments: int
+    type: str
+    customer_segment: str
+    customer_state: str
+    order_country: str
+    order_region: str
+    shipping_mode: str
 
-    order_hour: int
-    order_dayofweek: int
-    order_month: int
+    total_quantity: float = Field(ge=0)
+    total_discount: float = Field(ge=0)
+
+    num_unique_products: int = Field(ge=1)
+    num_unique_categories: int = Field(ge=1)
+    num_unique_departments: int = Field(ge=1)
+
+
+class PredictionResponse(BaseModel):
+    order_id: int
+    late_risk_probability: float
+    late_risk_prediction: int
+    risk_label: str
+    model_run_id: str
 
 
 @app.get("/health")
@@ -38,37 +51,113 @@ def health_check():
     }
 
 
-@app.post("/predict")
+@app.post(
+    "/predict",
+    response_model=PredictionResponse,
+)
+
 def predict(order: OrderInput):
     input_data = pd.DataFrame(
         [
             {
-                "Type": order.Type,
-                "Customer Segment": order.Customer_Segment,
-                "Customer State": order.Customer_State,
-                "Order Country": order.Order_Country,
-                "Order Region": order.Order_Region,
-                "Shipping Mode": order.Shipping_Mode,
+                "Type": order.type,
+                "Customer Segment": order.customer_segment,
+                "Customer State": order.customer_state,
+                "Order Country": order.order_country,
+                "Order Region": order.order_region,
+                "Shipping Mode": order.shipping_mode,
                 "total_quantity": order.total_quantity,
                 "total_discount": order.total_discount,
                 "num_unique_products": order.num_unique_products,
                 "num_unique_categories": order.num_unique_categories,
                 "num_unique_departments": order.num_unique_departments,
-                "order_hour": order.order_hour,
-                "order_dayofweek": order.order_dayofweek,
-                "order_month": order.order_month,
+                "order_hour": order.order_date.hour,
+                "order_dayofweek": order.order_date.weekday(),
+                "order_month": order.order_date.month,
             }
         ]
     )
 
     result = predict_late_risk(input_data)
 
-    return {
-        "late_risk_probability": float(
-            result["late_risk_probability"].iloc[0]
-        ),
-        "late_risk_prediction": int(
-            result["late_risk_prediction"].iloc[0]
-        ),
-        "risk_label": result["risk_label"].iloc[0],
-    }
+    late_risk_probability = float(
+        result["late_risk_probability"].iloc[0]
+    )
+
+    late_risk_prediction = int(
+        result["late_risk_prediction"].iloc[0]
+    )
+
+    risk_label = result["risk_label"].iloc[0]
+
+    model_run_id = result["model_run_id"].iloc[0]
+
+    db = SessionLocal()
+
+    try:
+
+        existing_order = db.query(Order).filter(
+            Order.order_id == order.order_id
+        ).first()
+
+        if existing_order:
+            raise HTTPException(
+                status_code=409,
+                detail="Order ID already exists.",
+            )
+
+        db_order = Order(
+            order_id=order.order_id,
+            customer_id=order.customer_id,
+            order_date=order.order_date,
+            type=order.type,
+            customer_segment=order.customer_segment,
+            customer_state=order.customer_state,
+            order_country=order.order_country,
+            order_region=order.order_region,
+            shipping_mode=order.shipping_mode,
+            total_quantity=order.total_quantity,
+            total_discount=order.total_discount,
+            num_unique_products=order.num_unique_products,
+            num_unique_categories=order.num_unique_categories,
+            num_unique_departments=order.num_unique_departments,
+            order_hour=order.order_date.hour,
+            order_dayofweek=order.order_date.weekday(),
+            order_month=order.order_date.month,
+        )
+
+        db_prediction = Prediction(
+            order_id=order.order_id,
+            late_risk_probability=late_risk_probability,
+            late_risk_prediction=late_risk_prediction,
+            risk_label=risk_label,
+            threshold=float(
+                result["threshold"].iloc[0]
+            ), 
+           model_run_id=model_run_id,
+        )
+
+        db.add(db_order)
+        db.add(db_prediction)
+
+        db.commit()
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save prediction to database.",
+        ) from exc
+    finally:
+        db.close()
+
+    return PredictionResponse(
+        order_id=order.order_id,
+        late_risk_probability=late_risk_probability,
+        late_risk_prediction=late_risk_prediction,
+        risk_label=risk_label,
+        model_run_id=model_run_id,
+    )
