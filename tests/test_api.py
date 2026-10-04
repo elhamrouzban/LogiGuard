@@ -116,3 +116,59 @@ def test_predict_endpoint_and_database_persistence():
 
         db.commit()
         db.close()
+
+
+def test_duplicate_order_returns_409():
+    test_order_id = 9999002
+
+    db = SessionLocal()
+    try:
+        db.query(Prediction).filter(
+            Prediction.order_id == test_order_id
+        ).delete()
+        db.query(Order).filter(
+            Order.order_id == test_order_id
+        ).delete()
+        db.commit()
+    finally:
+        db.close()
+
+    payload = {
+        "order_id": test_order_id,
+        "customer_id": 12345,
+        "order_date": "2026-10-04T19:30:00",
+        "type": "DEBIT",
+        "customer_segment": "Consumer",
+        "customer_state": "CA",
+        "order_country": "Estados Unidos",
+        "order_region": "West of USA",
+        "shipping_mode": "Standard Class",
+        "total_quantity": 3,
+        "total_discount": 10.0,
+        "num_unique_products": 2,
+        "num_unique_categories": 2,
+        "num_unique_departments": 1,
+    }
+
+    first_response = client.post("/predict", json=payload)
+
+    assert first_response.status_code == 200
+
+    second_response = client.post("/predict", json=payload)
+
+    assert second_response.status_code == 409
+    assert second_response.json() == {
+        "detail": "Order ID already exists."
+    }
+
+    db = SessionLocal()
+    try:
+        db.query(Prediction).filter(
+            Prediction.order_id == test_order_id
+        ).delete()
+        db.query(Order).filter(
+            Order.order_id == test_order_id
+        ).delete()
+        db.commit()
+    finally:
+        db.close()

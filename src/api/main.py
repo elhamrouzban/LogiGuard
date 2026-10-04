@@ -55,6 +55,7 @@ def health_check():
     "/predict",
     response_model=PredictionResponse,
 )
+
 def predict(order: OrderInput):
     input_data = pd.DataFrame(
         [
@@ -94,6 +95,17 @@ def predict(order: OrderInput):
     db = SessionLocal()
 
     try:
+
+        existing_order = db.query(Order).filter(
+            Order.order_id == order.order_id
+        ).first()
+
+        if existing_order:
+            raise HTTPException(
+                status_code=409,
+                detail="Order ID already exists.",
+            )
+
         db_order = Order(
             order_id=order.order_id,
             customer_id=order.customer_id,
@@ -130,14 +142,15 @@ def predict(order: OrderInput):
 
         db.commit()
 
+    except HTTPException:
+        raise
+
     except Exception as exc:
         db.rollback()
-
         raise HTTPException(
             status_code=500,
             detail="Failed to save prediction to database.",
         ) from exc
-
     finally:
         db.close()
 
