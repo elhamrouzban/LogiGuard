@@ -119,6 +119,7 @@ def test_predict_endpoint_and_database_persistence():
 
 
 def test_duplicate_order_returns_409():
+
     test_order_id = 9999002
 
     db = SessionLocal()
@@ -169,6 +170,77 @@ def test_duplicate_order_returns_409():
         db.query(Order).filter(
             Order.order_id == test_order_id
         ).delete()
+        db.commit()
+    finally:
+        db.close()
+
+
+def test_get_shipments_returns_saved_predictions():
+    test_order_id = 9999003
+
+    db = SessionLocal()
+    try:
+        db.query(Prediction).filter(
+            Prediction.order_id == test_order_id
+        ).delete()
+
+        db.query(Order).filter(
+            Order.order_id == test_order_id
+        ).delete()
+
+        db.commit()
+    finally:
+        db.close()
+
+    payload = {
+        "order_id": test_order_id,
+        "customer_id": 12345,
+        "order_date": "2026-10-04T19:30:00",
+        "type": "DEBIT",
+        "customer_segment": "Consumer",
+        "customer_state": "CA",
+        "order_country": "Estados Unidos",
+        "order_region": "West of USA",
+        "shipping_mode": "Standard Class",
+        "total_quantity": 3,
+        "total_discount": 10.0,
+        "num_unique_products": 2,
+        "num_unique_categories": 2,
+        "num_unique_departments": 1,
+    }
+
+    predict_response = client.post("/predict", json=payload)
+
+    assert predict_response.status_code == 200
+
+    shipments_response = client.get("/shipments")
+
+    assert shipments_response.status_code == 200
+
+    shipments = shipments_response.json()
+
+    matching_shipment = next(
+        shipment
+        for shipment in shipments
+        if shipment["order_id"] == test_order_id
+    )
+
+    assert matching_shipment["customer_id"] == 12345
+    assert matching_shipment["order_country"] == "Estados Unidos"
+    assert "late_risk_probability" in matching_shipment
+    assert "risk_label" in matching_shipment
+    assert "model_run_id" in matching_shipment
+
+    db = SessionLocal()
+    try:
+        db.query(Prediction).filter(
+            Prediction.order_id == test_order_id
+        ).delete()
+
+        db.query(Order).filter(
+            Order.order_id == test_order_id
+        ).delete()
+
         db.commit()
     finally:
         db.close()

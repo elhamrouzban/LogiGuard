@@ -43,12 +43,62 @@ class PredictionResponse(BaseModel):
     risk_label: str
     model_run_id: str
 
+class ShipmentSummary(BaseModel):
+    order_id: int
+    customer_id: int
+    order_date: datetime
+    customer_segment: str
+    order_country: str
+    order_region: str
+    shipping_mode: str
+    late_risk_probability: float
+    late_risk_prediction: int
+    risk_label: str
+    model_run_id: str
+
 
 @app.get("/health")
 def health_check():
     return {
         "status": "ok",
     }
+
+@app.get("/shipments", response_model=list[ShipmentSummary])
+def get_shipments():
+    db = SessionLocal()
+
+    try:
+        rows = (
+            db.query(Order, Prediction)
+            .join(
+                Prediction,
+                Prediction.order_id == Order.order_id,
+            )
+            .order_by(
+                Prediction.late_risk_probability.desc()
+            )
+            .all()
+        )
+
+        return [
+            ShipmentSummary(
+                order_id=order.order_id,
+                customer_id=order.customer_id,
+                order_date=order.order_date,
+                customer_segment=order.customer_segment,
+                order_country=order.order_country,
+                order_region=order.order_region,
+                shipping_mode=order.shipping_mode,
+                late_risk_probability=prediction.late_risk_probability,
+                late_risk_prediction=prediction.late_risk_prediction,
+                risk_label=prediction.risk_label,
+                model_run_id=prediction.model_run_id,
+            )
+            for order, prediction in rows
+        ]
+
+    finally:
+        db.close()
 
 
 @app.post(
