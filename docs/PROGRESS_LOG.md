@@ -547,6 +547,21 @@ roc_auc:   0.7746903663674294
 - Baseline artifacts are versioned so historical comparisons remain reproducible.
 - Candidate/final models can be compared against stored baseline metrics using their metadata.
 
-### Next Step
+## 2026-10-04 — API and Database Integration Completed
 
-Synchronize project documentation, then continue with FastAPI and PostgreSQL integration.
+- Updated the FastAPI prediction endpoint to accept order-level input and derive time-based model features from `order_date`.
+- Connected the prediction endpoint to the promoted model through the inference layer.
+- Persisted both orders and prediction results to PostgreSQL.
+- Stored the active `model_run_id` and the model threshold with each prediction.
+- Added an API/database integration test covering:
+  - `GET /health`
+  - `POST /predict`
+  - model inference
+  - PostgreSQL persistence
+  - verification of saved order and prediction records
+  - cleanup of test data
+- Confirmed the integration test passes successfully.
+- Moved `DATABASE_URL` out of source code and into a local `.env` file.
+- Added `.env` to `.gitignore`.
+- Verified PostgreSQL connectivity through the environment-based configuration.
+- Removed duplicate model evaluation logic from `train_final_model.py`.
