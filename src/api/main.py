@@ -1,15 +1,17 @@
 from datetime import datetime
 
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from src.database.connection import SessionLocal
+from src.database.orm_models import Order, Prediction
 from src.models.prediction import predict_late_risk
 
 
 app = FastAPI(
     title="LogiGuard API",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 
@@ -77,14 +79,72 @@ def predict(order: OrderInput):
 
     result = predict_late_risk(input_data)
 
+    late_risk_probability = float(
+        result["late_risk_probability"].iloc[0]
+    )
+
+    late_risk_prediction = int(
+        result["late_risk_prediction"].iloc[0]
+    )
+
+    risk_label = result["risk_label"].iloc[0]
+
+    model_run_id = result["model_run_id"].iloc[0]
+
+    db = SessionLocal()
+
+    try:
+        db_order = Order(
+            order_id=order.order_id,
+            customer_id=order.customer_id,
+            order_date=order.order_date,
+            type=order.type,
+            customer_segment=order.customer_segment,
+            customer_state=order.customer_state,
+            order_country=order.order_country,
+            order_region=order.order_region,
+            shipping_mode=order.shipping_mode,
+            total_quantity=order.total_quantity,
+            total_discount=order.total_discount,
+            num_unique_products=order.num_unique_products,
+            num_unique_categories=order.num_unique_categories,
+            num_unique_departments=order.num_unique_departments,
+            order_hour=order.order_date.hour,
+            order_dayofweek=order.order_date.weekday(),
+            order_month=order.order_date.month,
+        )
+
+        db_prediction = Prediction(
+            order_id=order.order_id,
+            late_risk_probability=late_risk_probability,
+            late_risk_prediction=late_risk_prediction,
+            risk_label=risk_label,
+            threshold=float(
+                result["threshold"].iloc[0]
+            ), 
+           model_run_id=model_run_id,
+        )
+
+        db.add(db_order)
+        db.add(db_prediction)
+
+        db.commit()
+
+    except Exception as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save prediction to database.",
+        ) from exc
+
+    finally:
+        db.close()
+
     return PredictionResponse(
         order_id=order.order_id,
-        late_risk_probability=float(
-            result["late_risk_probability"].iloc[0]
-        ),
-        late_risk_prediction=int(
-            result["late_risk_prediction"].iloc[0]
-        ),
-        risk_label=result["risk_label"].iloc[0],
-        model_run_id=result["model_run_id"].iloc[0],
+        late_risk_probability=late_risk_probability,
+        late_risk_prediction=late_risk_prediction,
+        risk_label=risk_label,
+        model_run_id=model_run_id,
     )
