@@ -565,3 +565,8 @@ roc_auc:   0.7746903663674294
 - Added `.env` to `.gitignore`.
 - Verified PostgreSQL connectivity through the environment-based configuration.
 - Removed duplicate model evaluation logic from `train_final_model.py`.
+
+- Added duplicate-order handling to `POST /predict`.
+- Duplicate `order_id` requests now return `409 Conflict` instead of `500 Internal Server Error`.
+- Added an automated API test for duplicate-order behavior.
+- Confirmed all API tests pass successfully.
