@@ -1,13 +1,14 @@
 import os
+from dotenv import load_dotenv
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL",)
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg://logiguard_user:Dbeavereli778@localhost:5432/logiguard",
-)
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable is not set.")
 
 
 engine = create_engine(
