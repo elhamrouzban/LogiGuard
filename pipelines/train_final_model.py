@@ -162,21 +162,6 @@ def main():
         y_train,
     )
 
-    validation_metrics = evaluate_classifier(
-        model,
-        X_val_prepared,
-        y_val,
-        threshold=SELECTED_THRESHOLD,
-    )
-
-    test_metrics = evaluate_classifier(
-        model,
-        X_test_prepared,
-        y_test,
-        threshold=SELECTED_THRESHOLD,
-    )
-
-
     # ---------------------------------------------------------
     # 10. Evaluate at selected operating threshold
     # ---------------------------------------------------------
