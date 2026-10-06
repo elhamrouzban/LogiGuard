@@ -36,6 +36,37 @@ try:
                 shipments,
                 use_container_width=True,
             )
+
+            st.subheader("Selected Shipment Details")
+
+            order_ids = [shipment["order_id"] for shipment in shipments]
+
+            selected_order_id = st.selectbox(
+                "Select an Order ID",
+                order_ids,
+            )
+
+            detail_response = requests.get(
+                f"{API_URL}/shipments/{selected_order_id}",
+                timeout=10,
+            )
+
+            if detail_response.status_code == 200:
+                shipment_detail = detail_response.json()
+
+                st.write("Order ID:", shipment_detail["order_id"])
+                st.write("Customer ID:", shipment_detail["customer_id"])
+                st.write("Country:", shipment_detail["order_country"])
+                st.write("Region:", shipment_detail["order_region"])
+                st.write("Shipping Mode:", shipment_detail["shipping_mode"])
+                st.write(
+                    "Risk Probability:",
+                    shipment_detail["late_risk_probability"],
+                )
+                st.write("Risk Label:", shipment_detail["risk_label"])
+                st.write("Model Run:", shipment_detail["model_run_id"])
+            else:
+                st.error("Could not load shipment details.")
         else:
             st.info("No shipments available.")
 

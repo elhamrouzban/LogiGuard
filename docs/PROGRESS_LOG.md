@@ -602,3 +602,18 @@ test_get_single_shipment_returns_saved_order
 
 Status:
 Passed successfully.
+
+
+## Streamlit Selected Shipment Details
+
+Added shipment selection to the Streamlit dashboard.
+
+Flow:
+- Streamlit loads shipments from `GET /shipments`.
+- User selects an `order_id`.
+- Streamlit calls `GET /shipments/{order_id}`.
+- Details for the selected shipment and prediction are displayed.
+
+Verification:
+- Tested manually in Streamlit.
+- Changing the selected order updates the displayed shipment details successfully.
