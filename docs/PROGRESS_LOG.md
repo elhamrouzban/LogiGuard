@@ -570,3 +570,35 @@ roc_auc:   0.7746903663674294
 - Duplicate `order_id` requests now return `409 Conflict` instead of `500 Internal Server Error`.
 - Added an automated API test for duplicate-order behavior.
 - Confirmed all API tests pass successfully.
+
+
+## 2026-10-05 — Read-Only Shipments API Added
+
+- Added a new read-only FastAPI endpoint:
+  - `GET /shipments`
+- The endpoint joins operational `orders` with their corresponding `predictions`.
+- Shipment results are ordered by `late_risk_probability` in descending order so higher-risk shipments appear first.
+- Added a typed `ShipmentSummary` response model.
+- The endpoint does not modify database state.
+- Added an automated integration test for `GET /shipments`.
+- Confirmed the API test suite passes with 4 tests.
+- This endpoint is intended to support the upcoming Streamlit shipment exception dashboard.
+
+## Single Shipment Endpoint
+
+Added:
+
+GET /shipments/{order_id}
+
+Purpose:
+Return one specific shipment and its prediction details by order ID.
+
+Behavior:
+- Returns shipment + prediction data for an existing order.
+- Returns 404 if the shipment does not exist.
+
+Test added:
+test_get_single_shipment_returns_saved_order
+
+Status:
+Passed successfully.

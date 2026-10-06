@@ -244,3 +244,37 @@ def test_get_shipments_returns_saved_predictions():
         db.commit()
     finally:
         db.close()
+
+def test_get_single_shipment_returns_saved_order():
+    order_id = 9999004
+
+    payload = {
+        "order_id": order_id,
+        "customer_id": 12345,
+        "order_date": "2026-10-06T10:00:00",
+        "type": "DEBIT",
+        "customer_segment": "Consumer",
+        "customer_state": "CA",
+        "order_country": "Estados Unidos",
+        "order_region": "West of USA",
+        "shipping_mode": "Standard Class",
+        "total_quantity": 2,
+        "total_discount": 5.0,
+        "num_unique_products": 1,
+        "num_unique_categories": 1,
+        "num_unique_departments": 1,
+    }
+
+    create_response = client.post("/predict", json=payload)
+    assert create_response.status_code == 200
+
+    response = client.get(f"/shipments/{order_id}")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["order_id"] == order_id
+    assert "late_risk_probability" in data
+    assert "risk_label" in data
+    assert "model_run_id" in data
