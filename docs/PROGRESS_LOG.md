@@ -628,3 +628,39 @@ Default local value:
 Verification:
 - Shipment table loads successfully.
 - Selected shipment details still load successfully.
+
+
+
+
+## 2026-10-06 — Raw Order Inference Preparation
+
+### Completed
+
+- Added `src/features/inference.py`.
+- Added `prepare_order_for_inference()`.
+- The new inference preparation logic accepts one raw order represented by one or more item-level rows.
+- The function validates that the input contains exactly one `Order Id`.
+- The function selects only the raw fields required for prediction-time preparation.
+- The function parses `order date (DateOrders)`.
+- The function applies the existing `Customer State` cleaning rule.
+- The function always aggregates the order to order level, even when the order contains only one item.
+- Aggregation creates:
+  - `total_quantity`
+  - `total_discount`
+  - `num_unique_products`
+  - `num_unique_categories`
+  - `num_unique_departments`
+- The function returns data in the same shape currently expected by the existing `POST /predict` endpoint.
+
+### Testing
+
+Added:
+
+`tests/test_inference_preparation.py`
+
+The test verifies that a raw order with multiple item rows is correctly aggregated into one order-level object.
+
+Test command:
+
+```bash
+python -m pytest tests/test_inference_preparation.py -v
