@@ -617,3 +617,14 @@ Flow:
 Verification:
 - Tested manually in Streamlit.
 - Changing the selected order updates the displayed shipment details successfully.
+
+## Streamlit API Configuration
+
+Updated the Streamlit dashboard to read the FastAPI base URL from the `API_URL` environment variable.
+
+Default local value:
+`http://127.0.0.1:8000`
+
+Verification:
+- Shipment table loads successfully.
+- Selected shipment details still load successfully.
