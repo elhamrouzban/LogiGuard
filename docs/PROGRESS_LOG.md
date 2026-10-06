@@ -686,3 +686,25 @@ python -m pytest tests/test_inference_preparation.py -v
 
 Result:
 2 passed
+
+
+
+### Inference Validation Tests
+
+Added validation coverage for the raw-order inference preparation path.
+
+The tests verify that the inference preparation rejects:
+
+- empty input
+- multiple `Order Id` values in one request
+- negative `Order Item Quantity`
+
+Existing tests also continue to verify:
+
+- aggregation of multi-item orders
+- aggregation of single-item orders
+
+Test command:
+
+```bash
+python -m pytest tests/test_inference_preparation.py -v

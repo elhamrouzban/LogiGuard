@@ -41,6 +41,45 @@ def prepare_order_for_inference(raw_order: pd.DataFrame) -> dict:
             "Input must contain exactly one Order Id."
         )
 
+    required_values = raw_order[RAW_REQUIRED_COLUMNS]
+
+    if required_values.isna().any().any():
+        raise ValueError(
+            "Missing values found in required order fields."
+        )
+
+    if (pd.to_numeric(
+        raw_order["Order Item Quantity"],
+        errors="raise",
+    ) < 0).any():
+        raise ValueError(
+            "Order Item Quantity contains negative values."
+        )
+
+    if (pd.to_numeric(
+        raw_order["Order Item Discount"],
+        errors="raise",
+    ) < 0).any():
+        raise ValueError(
+            "Order Item Discount contains negative values."
+        )
+
+    if (pd.to_numeric(
+        raw_order["Order Id"],
+        errors="raise",
+    ) <= 0).any():
+        raise ValueError(
+            "Order Id must contain positive values."
+        )
+
+    if (pd.to_numeric(
+        raw_order["Customer Id"],
+        errors="raise",
+    ) <= 0).any():
+        raise ValueError(
+            "Customer Id must contain positive values."
+        )
+
     order_df = raw_order[RAW_REQUIRED_COLUMNS].copy()
 
     order_df["order date (DateOrders)"] = pd.to_datetime(
