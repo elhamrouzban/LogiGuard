@@ -664,3 +664,25 @@ Test command:
 
 ```bash
 python -m pytest tests/test_inference_preparation.py -v
+
+
+
+### Additional Inference Test
+
+Added a single-item order test to confirm that aggregation is always applied, even when an order contains only one item.
+
+The test verifies that a single raw item is converted to the expected order-level fields:
+
+- `total_quantity`
+- `total_discount`
+- `num_unique_products`
+- `num_unique_categories`
+- `num_unique_departments`
+
+Test command:
+
+```bash
+python -m pytest tests/test_inference_preparation.py -v
+
+Result:
+2 passed
