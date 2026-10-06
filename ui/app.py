@@ -60,17 +60,25 @@ try:
             if detail_response.status_code == 200:
                 shipment_detail = detail_response.json()
 
-                st.write("Order ID:", shipment_detail["order_id"])
-                st.write("Customer ID:", shipment_detail["customer_id"])
-                st.write("Country:", shipment_detail["order_country"])
-                st.write("Region:", shipment_detail["order_region"])
-                st.write("Shipping Mode:", shipment_detail["shipping_mode"])
-                st.write(
-                    "Risk Probability:",
-                    shipment_detail["late_risk_probability"],
-                )
-                st.write("Risk Label:", shipment_detail["risk_label"])
-                st.write("Model Run:", shipment_detail["model_run_id"])
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric(
+                        "Risk Probability",
+                        f"{shipment_detail['late_risk_probability']:.1%}",
+                    )
+                    st.write("Risk Label:", shipment_detail["risk_label"])
+
+                with col2:
+                    st.write("Order ID:", shipment_detail["order_id"])
+                    st.write("Customer ID:", shipment_detail["customer_id"])
+                    st.write("Shipping Mode:", shipment_detail["shipping_mode"])
+
+                with col3:
+                    st.write("Country:", shipment_detail["order_country"])
+                    st.write("Region:", shipment_detail["order_region"])
+                    st.write("Model Run:", shipment_detail["model_run_id"])
+
             else:
                 st.error("Could not load shipment details.")
         else:
