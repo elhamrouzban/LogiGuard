@@ -1,12 +1,15 @@
 from datetime import datetime
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from src.database.connection import SessionLocal
 from src.database.orm_models import Order, Prediction
 from src.models.prediction import predict_late_risk
+from src.database.connection import get_db
+
 
 
 app = FastAPI(
@@ -43,12 +46,93 @@ class PredictionResponse(BaseModel):
     risk_label: str
     model_run_id: str
 
+class ShipmentSummary(BaseModel):
+    order_id: int
+    customer_id: int
+    order_date: datetime
+    customer_segment: str
+    order_country: str
+    order_region: str
+    shipping_mode: str
+    late_risk_probability: float
+    late_risk_prediction: int
+    risk_label: str
+    model_run_id: str
+
 
 @app.get("/health")
 def health_check():
     return {
         "status": "ok",
     }
+
+@app.get("/shipments", response_model=list[ShipmentSummary])
+def get_shipments():
+    db = SessionLocal()
+
+    try:
+        rows = (
+            db.query(Order, Prediction)
+            .join(
+                Prediction,
+                Prediction.order_id == Order.order_id,
+            )
+            .order_by(
+                Prediction.late_risk_probability.desc()
+            )
+            .all()
+        )
+
+        return [
+            ShipmentSummary(
+                order_id=order.order_id,
+                customer_id=order.customer_id,
+                order_date=order.order_date,
+                customer_segment=order.customer_segment,
+                order_country=order.order_country,
+                order_region=order.order_region,
+                shipping_mode=order.shipping_mode,
+                late_risk_probability=prediction.late_risk_probability,
+                late_risk_prediction=prediction.late_risk_prediction,
+                risk_label=prediction.risk_label,
+                model_run_id=prediction.model_run_id,
+            )
+            for order, prediction in rows
+        ]
+
+    finally:
+        db.close()
+
+@app.get("/shipments/{order_id}", response_model=ShipmentSummary)
+def get_shipment(order_id: int, db: Session = Depends(get_db)):
+    shipment = (
+        db.query(Order, Prediction)
+        .join(Prediction, Order.order_id == Prediction.order_id)
+        .filter(Order.order_id == order_id)
+        .first()
+    )
+
+    if shipment is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Shipment not found.",
+        )
+
+    order, prediction = shipment
+
+    return ShipmentSummary(
+        order_id=order.order_id,
+        customer_id=order.customer_id,
+        order_date=order.order_date,
+        customer_segment=order.customer_segment,
+        order_country=order.order_country,
+        order_region=order.order_region,
+        shipping_mode=order.shipping_mode,
+        late_risk_probability=prediction.late_risk_probability,
+        late_risk_prediction=prediction.late_risk_prediction,
+        risk_label=prediction.risk_label,
+        model_run_id=prediction.model_run_id,
+    )
 
 
 @app.post(
