@@ -840,3 +840,21 @@ Ran:
 
 ```bash
 python -m pytest tests/test_raw_order_pipeline.py -v
+
+
+
+
+## API Test Isolation
+
+### Completed
+
+- Fixed the single-shipment API test so it no longer depends on database state from previous test runs.
+- Added cleanup before and after the test.
+- Confirmed the complete test suite passes successfully.
+
+### Verification
+
+Ran:
+
+```bash
+python -m pytest -v
