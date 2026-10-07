@@ -39,6 +39,66 @@ class OrderInput(BaseModel):
     num_unique_departments: int = Field(ge=1)
 
 
+class OrderItemInput(BaseModel):
+    category_id: int
+    category_name: str
+
+    department_id: int
+    department_name: str
+
+    order_item_cardprod_id: int
+    order_item_discount: float = Field(ge=0)
+    order_item_discount_rate: float = Field(ge=0)
+    order_item_id: int
+    order_item_product_price: float = Field(ge=0)
+    order_item_quantity: float = Field(gt=0)
+    sales: float = Field(ge=0)
+    order_item_total: float = Field(ge=0)
+
+    product_card_id: int
+    product_category_id: int
+    product_description: str | None = None
+    product_image: str | None = None
+    product_name: str
+    product_price: float = Field(ge=0)
+    product_status: int
+
+
+class RawOrderInput(BaseModel):
+    order_id: int = Field(gt=0)
+    order_customer_id: int = Field(gt=0)
+    order_date: datetime
+
+    type: str
+    market: str
+
+    order_city: str
+    order_country: str
+    order_region: str
+    order_state: str
+    order_status: str
+    order_zipcode: str | None = None
+
+    shipping_mode: str
+    scheduled_shipping_days: int = Field(ge=0)
+
+    customer_id: int = Field(gt=0)
+    customer_first_name: str
+    customer_last_name: str
+    customer_email: str
+    customer_segment: str
+    customer_city: str
+    customer_country: str
+    customer_state: str
+    customer_street: str
+    customer_zipcode: str | None = None
+    customer_latitude: float
+    customer_longitude: float
+
+    items: list[OrderItemInput] = Field(min_length=1)
+
+
+
 class PredictionResponse(BaseModel):
     order_id: int
     late_risk_probability: float

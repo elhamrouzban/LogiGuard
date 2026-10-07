@@ -731,3 +731,31 @@ Ran:
 
 ```bash
 python -m src.database.create_tables
+
+
+## Raw Order API Schema
+
+### Completed
+
+- Expanded the raw-order API schema to represent a complete order-time snapshot.
+- Added customer information, order destination fields, shipping configuration, and detailed item/product fields.
+- Preserved `items` as a list so one order can contain multiple items.
+- Excluded post-outcome fields such as:
+  - `Days for shipping (real)`
+  - `Delivery Status`
+  - `Late_delivery_risk`
+  - `shipping date (DateOrders)`
+- Excluded `Customer Password`.
+
+### Testing
+
+Added:
+
+`tests/test_raw_order_schema.py`
+
+The test verifies that a valid raw order with nested items is accepted by the Pydantic schema.
+
+Test command:
+
+```bash
+python -m pytest tests/test_raw_order_schema.py -v
