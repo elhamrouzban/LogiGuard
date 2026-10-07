@@ -21,6 +21,37 @@ RAW_REQUIRED_COLUMNS = [
 ]
 
 
+def raw_order_to_item_dataframe(raw_order: dict) -> pd.DataFrame:
+    items = raw_order.get("items", [])
+
+    if not items:
+        raise ValueError("Raw order must contain at least one item.")
+
+    rows = []
+
+    for item in items:
+        rows.append(
+            {
+                "Type": raw_order["type"],
+                "Category Id": item["category_id"],
+                "Customer Segment": raw_order["customer_segment"],
+                "Customer State": raw_order["customer_state"],
+                "Department Name": item["department_name"],
+                "Order Country": raw_order["order_country"],
+                "Order Item Discount": item["order_item_discount"],
+                "Order Item Quantity": item["order_item_quantity"],
+                "Order Region": raw_order["order_region"],
+                "Product Name": item["product_name"],
+                "Shipping Mode": raw_order["shipping_mode"],
+                "Customer Id": raw_order["customer_id"],
+                "Order Id": raw_order["order_id"],
+                "order date (DateOrders)": raw_order["order_date"],
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 def prepare_order_for_inference(raw_order: pd.DataFrame) -> dict:
     if raw_order.empty:
         raise ValueError("Order data is empty.")
@@ -48,34 +79,46 @@ def prepare_order_for_inference(raw_order: pd.DataFrame) -> dict:
             "Missing values found in required order fields."
         )
 
-    if (pd.to_numeric(
-        raw_order["Order Item Quantity"],
-        errors="raise",
-    ) < 0).any():
+    if (
+        pd.to_numeric(
+            raw_order["Order Item Quantity"],
+            errors="raise",
+        )
+        < 0
+    ).any():
         raise ValueError(
             "Order Item Quantity contains negative values."
         )
 
-    if (pd.to_numeric(
-        raw_order["Order Item Discount"],
-        errors="raise",
-    ) < 0).any():
+    if (
+        pd.to_numeric(
+            raw_order["Order Item Discount"],
+            errors="raise",
+        )
+        < 0
+    ).any():
         raise ValueError(
             "Order Item Discount contains negative values."
         )
 
-    if (pd.to_numeric(
-        raw_order["Order Id"],
-        errors="raise",
-    ) <= 0).any():
+    if (
+        pd.to_numeric(
+            raw_order["Order Id"],
+            errors="raise",
+        )
+        <= 0
+    ).any():
         raise ValueError(
             "Order Id must contain positive values."
         )
 
-    if (pd.to_numeric(
-        raw_order["Customer Id"],
-        errors="raise",
-    ) <= 0).any():
+    if (
+        pd.to_numeric(
+            raw_order["Customer Id"],
+            errors="raise",
+        )
+        <= 0
+    ).any():
         raise ValueError(
             "Customer Id must contain positive values."
         )
@@ -120,7 +163,9 @@ def prepare_order_for_inference(raw_order: pd.DataFrame) -> dict:
     return {
         "order_id": int(row["Order Id"]),
         "customer_id": int(row["Customer Id"]),
-        "order_date": row["order date (DateOrders)"].isoformat(),
+        "order_date": row[
+            "order date (DateOrders)"
+        ].isoformat(),
         "type": row["Type"],
         "customer_segment": row["Customer Segment"],
         "customer_state": row["Customer State"],

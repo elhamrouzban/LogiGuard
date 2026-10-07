@@ -759,3 +759,21 @@ Test command:
 
 ```bash
 python -m pytest tests/test_raw_order_schema.py -v
+
+
+
+## Raw Order Inference Adapter
+
+### Completed
+
+- Added a production-only adapter for raw order payloads.
+- Converts nested `items[]` into item-level rows expected by the existing inference preparation logic.
+- Reuses the existing inference aggregation without changing any training, preprocessing, or model-training files.
+- Verified multi-item raw orders aggregate correctly before prediction.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_inference_preparation.py -v
