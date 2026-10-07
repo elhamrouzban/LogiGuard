@@ -5,11 +5,13 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.database.connection import SessionLocal
-from src.database.orm_models import Order, Prediction
+from src.database.connection import SessionLocal, get_db
+from src.database.orm_models import Order, Prediction, RawOrder
+from src.features.inference import (
+    prepare_order_for_inference,
+    raw_order_to_item_dataframe,
+)
 from src.models.prediction import predict_late_risk
-from src.database.connection import get_db
-
 
 
 app = FastAPI(
@@ -98,13 +100,13 @@ class RawOrderInput(BaseModel):
     items: list[OrderItemInput] = Field(min_length=1)
 
 
-
 class PredictionResponse(BaseModel):
     order_id: int
     late_risk_probability: float
     late_risk_prediction: int
     risk_label: str
     model_run_id: str
+
 
 class ShipmentSummary(BaseModel):
     order_id: int
@@ -125,6 +127,7 @@ def health_check():
     return {
         "status": "ok",
     }
+
 
 @app.get("/shipments", response_model=list[ShipmentSummary])
 def get_shipments():
@@ -163,11 +166,21 @@ def get_shipments():
     finally:
         db.close()
 
-@app.get("/shipments/{order_id}", response_model=ShipmentSummary)
-def get_shipment(order_id: int, db: Session = Depends(get_db)):
+
+@app.get(
+    "/shipments/{order_id}",
+    response_model=ShipmentSummary,
+)
+def get_shipment(
+    order_id: int,
+    db: Session = Depends(get_db),
+):
     shipment = (
         db.query(Order, Prediction)
-        .join(Prediction, Order.order_id == Prediction.order_id)
+        .join(
+            Prediction,
+            Order.order_id == Prediction.order_id,
+        )
         .filter(Order.order_id == order_id)
         .first()
     )
@@ -199,7 +212,6 @@ def get_shipment(order_id: int, db: Session = Depends(get_db)):
     "/predict",
     response_model=PredictionResponse,
 )
-
 def predict(order: OrderInput):
     input_data = pd.DataFrame(
         [
@@ -233,16 +245,16 @@ def predict(order: OrderInput):
     )
 
     risk_label = result["risk_label"].iloc[0]
-
     model_run_id = result["model_run_id"].iloc[0]
 
     db = SessionLocal()
 
     try:
-
-        existing_order = db.query(Order).filter(
-            Order.order_id == order.order_id
-        ).first()
+        existing_order = (
+            db.query(Order)
+            .filter(Order.order_id == order.order_id)
+            .first()
+        )
 
         if existing_order:
             raise HTTPException(
@@ -277,8 +289,8 @@ def predict(order: OrderInput):
             risk_label=risk_label,
             threshold=float(
                 result["threshold"].iloc[0]
-            ), 
-           model_run_id=model_run_id,
+            ),
+            model_run_id=model_run_id,
         )
 
         db.add(db_order)
@@ -291,15 +303,300 @@ def predict(order: OrderInput):
 
     except Exception as exc:
         db.rollback()
+
         raise HTTPException(
             status_code=500,
             detail="Failed to save prediction to database.",
         ) from exc
+
     finally:
         db.close()
 
     return PredictionResponse(
         order_id=order.order_id,
+        late_risk_probability=late_risk_probability,
+        late_risk_prediction=late_risk_prediction,
+        risk_label=risk_label,
+        model_run_id=model_run_id,
+    )
+
+
+@app.post(
+    "/predict/raw",
+    response_model=PredictionResponse,
+)
+def predict_raw_order(raw_order: RawOrderInput):
+    raw_payload = raw_order.model_dump(
+        mode="json"
+    )
+
+    # Step 1:
+    # Save the complete original order first.
+    db = SessionLocal()
+
+    try:
+        existing_raw_order = (
+            db.query(RawOrder)
+            .filter(
+                RawOrder.order_id == raw_order.order_id
+            )
+            .first()
+        )
+
+        if existing_raw_order:
+            raise HTTPException(
+                status_code=409,
+                detail="Raw order ID already exists.",
+            )
+
+        db_raw_order = RawOrder(
+            order_id=raw_order.order_id,
+            raw_payload=raw_payload,
+        )
+
+        db.add(db_raw_order)
+        db.commit()
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save raw order.",
+        ) from exc
+
+    finally:
+        db.close()
+
+    # Step 2:
+    # Convert items[] into temporary item-level rows
+    # and prepare one order-level representation.
+    try:
+        item_level_data = raw_order_to_item_dataframe(
+            raw_payload
+        )
+
+        prepared_data = prepare_order_for_inference(
+            item_level_data
+        )
+
+        prepared_order = OrderInput(
+            **prepared_data
+        )
+
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Raw order was saved, but inference "
+                "preparation failed."
+            ),
+        ) from exc
+
+    # Step 3:
+    # Save the processed order before prediction.
+    db = SessionLocal()
+
+    try:
+        existing_order = (
+            db.query(Order)
+            .filter(
+                Order.order_id == prepared_order.order_id
+            )
+            .first()
+        )
+
+        if existing_order:
+            raise HTTPException(
+                status_code=409,
+                detail="Processed order ID already exists.",
+            )
+
+        db_order = Order(
+            order_id=prepared_order.order_id,
+            customer_id=prepared_order.customer_id,
+            order_date=prepared_order.order_date,
+            type=prepared_order.type,
+            customer_segment=(
+                prepared_order.customer_segment
+            ),
+            customer_state=prepared_order.customer_state,
+            order_country=prepared_order.order_country,
+            order_region=prepared_order.order_region,
+            shipping_mode=prepared_order.shipping_mode,
+            total_quantity=prepared_order.total_quantity,
+            total_discount=prepared_order.total_discount,
+            num_unique_products=(
+                prepared_order.num_unique_products
+            ),
+            num_unique_categories=(
+                prepared_order.num_unique_categories
+            ),
+            num_unique_departments=(
+                prepared_order.num_unique_departments
+            ),
+            order_hour=prepared_order.order_date.hour,
+            order_dayofweek=(
+                prepared_order.order_date.weekday()
+            ),
+            order_month=prepared_order.order_date.month,
+        )
+
+        db.add(db_order)
+        db.commit()
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Raw order was saved, but the processed "
+                "order could not be saved."
+            ),
+        ) from exc
+
+    finally:
+        db.close()
+
+    # Step 4:
+    # Build the final model input from the processed order.
+    input_data = pd.DataFrame(
+        [
+            {
+                "Type": prepared_order.type,
+                "Customer Segment": (
+                    prepared_order.customer_segment
+                ),
+                "Customer State": (
+                    prepared_order.customer_state
+                ),
+                "Order Country": (
+                    prepared_order.order_country
+                ),
+                "Order Region": (
+                    prepared_order.order_region
+                ),
+                "Shipping Mode": (
+                    prepared_order.shipping_mode
+                ),
+                "total_quantity": (
+                    prepared_order.total_quantity
+                ),
+                "total_discount": (
+                    prepared_order.total_discount
+                ),
+                "num_unique_products": (
+                    prepared_order.num_unique_products
+                ),
+                "num_unique_categories": (
+                    prepared_order.num_unique_categories
+                ),
+                "num_unique_departments": (
+                    prepared_order.num_unique_departments
+                ),
+                "order_hour": (
+                    prepared_order.order_date.hour
+                ),
+                "order_dayofweek": (
+                    prepared_order.order_date.weekday()
+                ),
+                "order_month": (
+                    prepared_order.order_date.month
+                ),
+            }
+        ]
+    )
+
+    # Step 5:
+    # Run the already-trained model.
+    try:
+        result = predict_late_risk(
+            input_data
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Raw and processed orders were saved, "
+                "but prediction failed."
+            ),
+        ) from exc
+
+    late_risk_probability = float(
+        result["late_risk_probability"].iloc[0]
+    )
+
+    late_risk_prediction = int(
+        result["late_risk_prediction"].iloc[0]
+    )
+
+    risk_label = result["risk_label"].iloc[0]
+    model_run_id = result["model_run_id"].iloc[0]
+
+    # Step 6:
+    # Save prediction separately.
+    db = SessionLocal()
+
+    try:
+        existing_prediction = (
+            db.query(Prediction)
+            .filter(
+                Prediction.order_id
+                == prepared_order.order_id
+            )
+            .first()
+        )
+
+        if existing_prediction:
+            raise HTTPException(
+                status_code=409,
+                detail="Prediction already exists.",
+            )
+
+        db_prediction = Prediction(
+            order_id=prepared_order.order_id,
+            late_risk_probability=late_risk_probability,
+            late_risk_prediction=late_risk_prediction,
+            risk_label=risk_label,
+            threshold=float(
+                result["threshold"].iloc[0]
+            ),
+            model_run_id=model_run_id,
+        )
+
+        db.add(db_prediction)
+        db.commit()
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Prediction succeeded, but the result "
+                "could not be saved."
+            ),
+        ) from exc
+
+    finally:
+        db.close()
+
+    return PredictionResponse(
+        order_id=prepared_order.order_id,
         late_risk_probability=late_risk_probability,
         late_risk_prediction=late_risk_prediction,
         risk_label=risk_label,
