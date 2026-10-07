@@ -777,3 +777,46 @@ Ran:
 
 ```bash
 python -m pytest tests/test_inference_preparation.py -v
+
+
+## End-to-End Raw Order Prediction Pipeline
+
+### Completed
+
+- Added a new production API flow for complete raw orders.
+- A validated raw order is first saved in PostgreSQL `raw_orders`.
+- The nested `items[]` payload is converted into temporary item-level rows.
+- The existing inference preparation logic validates, cleans, and aggregates the order into order-level features.
+- The processed order is saved in `orders` before model inference.
+- The existing trained model is used without retraining or changing the training/preprocessing pipeline.
+- Prediction results are saved separately in `predictions`.
+
+### End-to-End Verification
+
+Tested with order:
+
+`900001`
+
+Verified:
+
+- `raw_orders` contains the original order.
+- `orders` contains the aggregated order:
+  - `total_quantity = 3`
+  - `total_discount = 15`
+  - `num_unique_products = 2`
+  - `num_unique_categories = 1`
+  - `num_unique_departments = 1`
+- `predictions` contains:
+  - `late_risk_probability = 0.3409925699234009`
+  - `late_risk_prediction = 0`
+  - `risk_label = Not Late`
+  - `model_run_id = 2026-10-02_10-36`
+
+The complete flow was successfully verified:
+
+RawOrderInput
+→ raw_orders
+→ item-level inference preparation
+→ orders
+→ trained model
+→ predictions
