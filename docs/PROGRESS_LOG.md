@@ -708,3 +708,26 @@ Test command:
 
 ```bash
 python -m pytest tests/test_inference_preparation.py -v
+
+
+## Raw Order Storage
+
+Added a new PostgreSQL table for preserving original incoming order payloads.
+
+### Changes
+
+- Added `RawOrder` ORM model.
+- Added PostgreSQL `JSONB` storage for raw order payloads.
+- Added `raw_orders` table with:
+  - `id`
+  - `order_id`
+  - `raw_payload`
+  - `received_at`
+- Updated database table creation imports.
+
+### Verification
+
+Ran:
+
+```bash
+python -m src.database.create_tables
