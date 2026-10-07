@@ -820,3 +820,23 @@ RawOrderInput
 → orders
 → trained model
 → predictions
+
+
+## Raw Order Prediction Failure Handling
+
+### Completed
+
+- Added an integration test for prediction failure after raw-order processing.
+- Simulated a model inference failure without modifying the trained model.
+- Verified that:
+  - the raw order remains stored in `raw_orders`;
+  - the processed order remains stored in `orders`;
+  - no prediction row is created in `predictions`.
+- This confirms that raw and processed order data are preserved for debugging and retry when model inference fails.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_raw_order_pipeline.py -v
