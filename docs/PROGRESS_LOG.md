@@ -958,3 +958,22 @@ Ran:
 
 ```bash
 python -m pytest tests/test_agent_tools.py -v
+
+
+
+## Operations Copilot API Endpoint
+
+### Completed
+
+- Added `POST /copilot` to FastAPI.
+- Added `CopilotRequest` schema with a natural-language `question`.
+- Connected the API endpoint to the existing deterministic Operations Copilot.
+- Verified that Copilot questions can trigger the appropriate read-only agent tool.
+- Confirmed prediction queries return structured PostgreSQL-backed prediction data.
+
+### Verification
+
+Tested in FastAPI Swagger UI:
+
+```text
+POST /copilot

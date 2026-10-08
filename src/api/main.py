@@ -12,6 +12,7 @@ from src.features.inference import (
     raw_order_to_item_dataframe,
 )
 from src.models.prediction import predict_late_risk
+from src.agent.copilot import run_copilot
 
 
 app = FastAPI(
@@ -120,6 +121,11 @@ class ShipmentSummary(BaseModel):
     late_risk_prediction: int
     risk_label: str
     model_run_id: str
+
+
+class CopilotRequest(BaseModel):
+    question: str
+
 
 
 @app.get("/health")
@@ -696,3 +702,10 @@ def predict_raw_order(raw_order: RawOrderInput):
         risk_label=risk_label,
         model_run_id=model_run_id,
     )
+
+
+@app.post("/copilot")
+def copilot(request: CopilotRequest):
+    return run_copilot(request.question)
+
+
