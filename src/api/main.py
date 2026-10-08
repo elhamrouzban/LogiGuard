@@ -208,6 +208,100 @@ def get_shipment(
     )
 
 
+@app.get("/raw-orders/{order_id}")
+def get_raw_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+):
+    raw_order = (
+        db.query(RawOrder)
+        .filter(RawOrder.order_id == order_id)
+        .first()
+    )
+
+    if raw_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Raw order not found.",
+        )
+
+    return {
+        "id": raw_order.id,
+        "order_id": raw_order.order_id,
+        "raw_payload": raw_order.raw_payload,
+        "received_at": raw_order.received_at,
+    }
+
+
+@app.get("/orders/{order_id}")
+def get_processed_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+):
+    order = (
+        db.query(Order)
+        .filter(Order.order_id == order_id)
+        .first()
+    )
+
+    if order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Processed order not found.",
+        )
+
+    return {
+        "id": order.id,
+        "order_id": order.order_id,
+        "customer_id": order.customer_id,
+        "order_date": order.order_date,
+        "type": order.type,
+        "customer_segment": order.customer_segment,
+        "customer_state": order.customer_state,
+        "order_country": order.order_country,
+        "order_region": order.order_region,
+        "shipping_mode": order.shipping_mode,
+        "total_quantity": order.total_quantity,
+        "total_discount": order.total_discount,
+        "num_unique_products": order.num_unique_products,
+        "num_unique_categories": order.num_unique_categories,
+        "num_unique_departments": order.num_unique_departments,
+        "order_hour": order.order_hour,
+        "order_dayofweek": order.order_dayofweek,
+        "order_month": order.order_month,
+        "created_at": order.created_at,
+    }
+
+
+@app.get("/predictions/{order_id}")
+def get_prediction(
+    order_id: int,
+    db: Session = Depends(get_db),
+):
+    prediction = (
+        db.query(Prediction)
+        .filter(Prediction.order_id == order_id)
+        .first()
+    )
+
+    if prediction is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction not found.",
+        )
+
+    return {
+        "id": prediction.id,
+        "order_id": prediction.order_id,
+        "late_risk_probability": prediction.late_risk_probability,
+        "late_risk_prediction": prediction.late_risk_prediction,
+        "risk_label": prediction.risk_label,
+        "threshold": prediction.threshold,
+        "model_run_id": prediction.model_run_id,
+        "created_at": prediction.created_at,
+    }
+
+
 @app.post(
     "/predict",
     response_model=PredictionResponse,

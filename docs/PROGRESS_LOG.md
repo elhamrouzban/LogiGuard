@@ -858,3 +858,25 @@ Ran:
 
 ```bash
 python -m pytest -v
+
+
+## Inference Dashboard and Order Detail Views
+
+### Completed
+
+- Added read-only API endpoints for raw orders, processed orders, and predictions.
+- Added dashboard risk categorization:
+  - No Risk
+  - Low Risk
+  - Medium Risk
+  - High Risk
+- Added probability-based shipment sorting.
+- Added Order ID search.
+- Added compact order overview.
+- Added detailed views for:
+  - Raw Order
+  - Processed Order
+  - Prediction
+- Added raw JSON order ingestion through Streamlit.
+- Verified Streamlit → FastAPI → PostgreSQL → trained model integration.
+- Training and model preprocessing files were not modified.
