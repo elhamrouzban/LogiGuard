@@ -9,9 +9,37 @@ from sqlalchemy import (
     String,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.connection import Base
+
+
+class RawOrder(Base):
+    __tablename__ = "raw_orders"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    order_id: Mapped[int] = mapped_column(
+        BigInteger,
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    raw_payload: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+    )
+
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class Order(Base):
@@ -111,9 +139,9 @@ class Order(Base):
     )
 
     customer_id: Mapped[int] = mapped_column(
-    BigInteger,
-    nullable=False,
-    index=True,
+        BigInteger,
+        nullable=False,
+        index=True,
     )
 
     order_date: Mapped[datetime] = mapped_column(
@@ -161,7 +189,7 @@ class Prediction(Base):
         String(100),
         nullable=False,
     )
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

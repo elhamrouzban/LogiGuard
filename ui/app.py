@@ -1,8 +1,7 @@
+import json
 import os
 
-import requests
-import streamlit as st
-
+import pandas as pd
 import requests
 import streamlit as st
 
@@ -13,237 +12,959 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("LogiGuard AI")
-st.subheader("Logistics Exception Management Dashboard")
-
-st.write(
-    "Monitor shipment risk, review high-risk orders, "
-    "and inspect prediction details."
-)
 
 API_URL = os.getenv(
     "API_URL",
     "http://127.0.0.1:8000",
 )
 
-st.subheader("Shipment Exceptions")
 
-try:
-    response = requests.get(
-        f"{API_URL}/shipments",
-        timeout=10,
-    )
+def get_risk_level(probability: float) -> str:
+    if probability < 0.40:
+        return "No Risk"
 
-    if response.status_code == 200:
-        shipments = response.json()
+    if probability < 0.60:
+        return "Low Risk"
 
-        if shipments:
-            st.dataframe(
-                shipments,
-                use_container_width=True,
-            )
+    if probability < 0.80:
+        return "Medium Risk"
 
-            st.subheader("Selected Shipment Details")
-
-            order_ids = [shipment["order_id"] for shipment in shipments]
-
-            selected_order_id = st.selectbox(
-                "Select an Order ID",
-                order_ids,
-            )
-
-            detail_response = requests.get(
-                f"{API_URL}/shipments/{selected_order_id}",
-                timeout=10,
-            )
-
-            if detail_response.status_code == 200:
-                shipment_detail = detail_response.json()
-
-                col1, col2, col3 = st.columns(3)
-
-                with col1:
-                    st.metric(
-                        "Risk Probability",
-                        f"{shipment_detail['late_risk_probability']:.1%}",
-                    )
-                    st.write("Risk Label:", shipment_detail["risk_label"])
-
-                with col2:
-                    st.write("Order ID:", shipment_detail["order_id"])
-                    st.write("Customer ID:", shipment_detail["customer_id"])
-                    st.write("Shipping Mode:", shipment_detail["shipping_mode"])
-
-                with col3:
-                    st.write("Country:", shipment_detail["order_country"])
-                    st.write("Region:", shipment_detail["order_region"])
-                    st.write("Model Run:", shipment_detail["model_run_id"])
-
-            else:
-                st.error("Could not load shipment details.")
-        else:
-            st.info("No shipments available.")
-
-    else:
-        st.error(
-            f"Could not load shipments. "
-            f"API returned status code {response.status_code}."
-        )
-
-except requests.RequestException as exc:
-    st.error(
-        f"Could not connect to FastAPI: {exc}"
-    )
+    return "High Risk"
 
 
-st.subheader("New Shipment Prediction")
-
-with st.form("prediction_form"):
-    order_id = st.number_input(
-        "Order ID",
-        min_value=1,
-        step=1,
-    )
-
-    customer_id = st.number_input(
-        "Customer ID",
-        min_value=0,
-        step=1,
-    )
-
-    order_date = st.text_input(
-        "Order Date",
-        value="2026-10-06T12:00:00",
-    )
-
-    order_type = st.selectbox(
-        "Type",
-        ["DEBIT", "TRANSFER", "PAYMENT", "CASH"],
-    )
-
-    customer_segment = st.selectbox(
-        "Customer Segment",
-        ["Consumer", "Corporate", "Home Office"],
-    )
-
-    customer_state = st.text_input(
-        "Customer State",
-        value="CA",
-    )
-
-    order_country = st.text_input(
-        "Order Country",
-        value="Estados Unidos",
-    )
-
-    order_region = st.text_input(
-        "Order Region",
-        value="West of USA",
-    )
-
-    shipping_mode = st.selectbox(
-        "Shipping Mode",
-        [
-            "Standard Class",
-            "Second Class",
-            "First Class",
-            "Same Day",
-        ],
-    )
-
-    total_quantity = st.number_input(
-        "Total Quantity",
-        min_value=1,
-        step=1,
-    )
-
-    total_discount = st.number_input(
-        "Total Discount",
-        min_value=0.0,
-        step=1.0,
-    )
-
-    num_unique_products = st.number_input(
-        "Unique Products",
-        min_value=1,
-        step=1,
-    )
-
-    num_unique_categories = st.number_input(
-        "Unique Categories",
-        min_value=1,
-        step=1,
-    )
-
-    num_unique_departments = st.number_input(
-        "Unique Departments",
-        min_value=1,
-        step=1,
-    )
-
-    submitted = st.form_submit_button("Predict")
-
-
-if submitted:
-    payload = {
-        "order_id": int(order_id),
-        "customer_id": int(customer_id),
-        "order_date": order_date,
-        "type": order_type,
-        "customer_segment": customer_segment,
-        "customer_state": customer_state,
-        "order_country": order_country,
-        "order_region": order_region,
-        "shipping_mode": shipping_mode,
-        "total_quantity": int(total_quantity),
-        "total_discount": float(total_discount),
-        "num_unique_products": int(num_unique_products),
-        "num_unique_categories": int(num_unique_categories),
-        "num_unique_departments": int(num_unique_departments),
+def get_risk_emoji(risk_level: str) -> str:
+    mapping = {
+        "No Risk": "🟢",
+        "Low Risk": "🟡",
+        "Medium Risk": "🟠",
+        "High Risk": "🔴",
     }
 
+    return mapping.get(risk_level, "⚪")
+
+
+def style_risk_row(row):
+    risk_level = row["Risk Level"]
+
+    if risk_level == "High Risk":
+        return [
+            "background-color: rgba(255, 0, 0, 0.18)"
+        ] * len(row)
+
+    if risk_level == "Medium Risk":
+        return [
+            "background-color: rgba(255, 165, 0, 0.18)"
+        ] * len(row)
+
+    if risk_level == "Low Risk":
+        return [
+            "background-color: rgba(255, 215, 0, 0.18)"
+        ] * len(row)
+
+    return [
+        "background-color: rgba(0, 180, 0, 0.14)"
+    ] * len(row)
+
+
+def fetch_json(endpoint: str):
     try:
-        prediction_response = requests.post(
-            f"{API_URL}/predict",
-            json=payload,
+        response = requests.get(
+            f"{API_URL}{endpoint}",
             timeout=10,
         )
 
-        if prediction_response.status_code == 200:
-            result = prediction_response.json()
+        if response.status_code == 200:
+            return response.json()
 
-            st.success("Prediction completed successfully.")
+        return None
 
+    except requests.RequestException:
+        return None
+
+
+def show_order_overview(order_id: int):
+    shipment = fetch_json(
+        f"/shipments/{order_id}"
+    )
+
+    raw_order_record = fetch_json(
+        f"/raw-orders/{order_id}"
+    )
+
+    if shipment is None:
+        st.error(
+            "Could not load order overview."
+        )
+        return
+
+    probability = shipment[
+        "late_risk_probability"
+    ]
+
+    risk_level = get_risk_level(
+        probability
+    )
+
+    risk_emoji = get_risk_emoji(
+        risk_level
+    )
+
+    scheduled_shipping_days = None
+
+    if raw_order_record is not None:
+        raw_payload = raw_order_record.get(
+            "raw_payload",
+            {},
+        )
+
+        scheduled_shipping_days = (
+            raw_payload.get(
+                "scheduled_shipping_days"
+            )
+        )
+
+    st.subheader(
+        f"Order #{order_id}"
+    )
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric(
+            "Risk Level",
+            f"{risk_emoji} {risk_level}",
+        )
+
+    with col2:
+        st.metric(
+            "Late Risk Probability",
+            f"{probability:.1%}",
+        )
+
+    with col3:
+        st.metric(
+            "Prediction",
+            shipment["risk_label"],
+        )
+
+    with col4:
+        if scheduled_shipping_days is not None:
             st.metric(
-                "Predicted Risk Probability",
-                f"{result['late_risk_probability']:.1%}",
+                "Scheduled Shipping",
+                f"{scheduled_shipping_days} days",
+            )
+        else:
+            st.metric(
+                "Scheduled Shipping",
+                "N/A",
             )
 
-            st.write(
-                "Prediction:",
-                result["late_risk_prediction"],
-            )
+    st.caption(
+        f"Model: {shipment['model_run_id']}"
+    )
 
-            st.write(
-                "Risk Label:",
-                result["risk_label"],
-            )
 
-            st.write(
-                "Model Run:",
-                result["model_run_id"],
-            )
+def show_raw_order(order_id: int):
+    raw_record = fetch_json(
+        f"/raw-orders/{order_id}"
+    )
 
-        elif prediction_response.status_code == 409:
-            st.warning("Order ID already exists.")
+    if raw_record is None:
+        st.info(
+            "Raw order data is not available."
+        )
+        return
+
+    raw_payload = raw_record.get(
+        "raw_payload",
+        {},
+    )
+
+    items = raw_payload.get(
+        "items",
+        [],
+    )
+
+    top_level_data = {
+        key: value
+        for key, value in raw_payload.items()
+        if key != "items"
+    }
+
+    raw_table = pd.DataFrame(
+        {
+            "Field": list(
+                top_level_data.keys()
+            ),
+            "Value": [
+                str(value)
+                for value
+                in top_level_data.values()
+            ],
+        }
+    )
+
+    st.caption(
+        f"Received at: "
+        f"{raw_record.get('received_at', 'N/A')}"
+    )
+
+    st.dataframe(
+        raw_table,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    st.subheader(
+        f"Items ({len(items)})"
+    )
+
+    if items:
+        st.dataframe(
+            pd.DataFrame(items),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    else:
+        st.info(
+            "No items found."
+        )
+
+
+def show_processed_order(order_id: int):
+    order = fetch_json(
+        f"/orders/{order_id}"
+    )
+
+    if order is None:
+        st.info(
+            "Processed order data is not available."
+        )
+        return
+
+    processed_table = pd.DataFrame(
+        {
+            "Field": list(order.keys()),
+            "Value": [
+                str(value)
+                for value in order.values()
+            ],
+        }
+    )
+
+    st.dataframe(
+        processed_table,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+
+def show_prediction(order_id: int):
+    prediction = fetch_json(
+        f"/predictions/{order_id}"
+    )
+
+    if prediction is None:
+        st.info(
+            "Prediction data is not available."
+        )
+        return
+
+    probability = prediction[
+        "late_risk_probability"
+    ]
+
+    risk_level = get_risk_level(
+        probability
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric(
+            "Risk Probability",
+            f"{probability:.1%}",
+        )
+
+    with col2:
+        st.metric(
+            "Risk Level",
+            (
+                f"{get_risk_emoji(risk_level)} "
+                f"{risk_level}"
+            ),
+        )
+
+    with col3:
+        st.metric(
+            "Prediction",
+            prediction["risk_label"],
+        )
+
+    prediction_table = pd.DataFrame(
+        {
+            "Field": list(
+                prediction.keys()
+            ),
+            "Value": [
+                str(value)
+                for value
+                in prediction.values()
+            ],
+        }
+    )
+
+    st.dataframe(
+        prediction_table,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+
+st.title("📦 LogiGuard AI")
+
+st.caption(
+    "Logistics Delay Risk Monitoring "
+    "and Exception Management"
+)
+
+
+dashboard_tab, orders_tab, new_order_tab = (
+    st.tabs(
+        [
+            "Dashboard",
+            "Order Details",
+            "New Raw Order",
+        ]
+    )
+)
+
+
+# =========================================================
+# DASHBOARD
+# =========================================================
+
+with dashboard_tab:
+    st.header(
+        "Shipment Risk Dashboard"
+    )
+
+    try:
+        response = requests.get(
+            f"{API_URL}/shipments",
+            timeout=10,
+        )
+
+        if response.status_code != 200:
+            st.error(
+                "Could not load shipments."
+            )
 
         else:
-            st.error(
-                f"Prediction failed. "
-                f"Status code: {prediction_response.status_code}"
-            )
+            shipments = response.json()
+
+            if not shipments:
+                st.info(
+                    "No shipments available."
+                )
+
+            else:
+                shipment_rows = []
+
+                for shipment in shipments:
+                    probability = shipment[
+                        "late_risk_probability"
+                    ]
+
+                    risk_level = get_risk_level(
+                        probability
+                    )
+
+                    shipment_rows.append(
+                        {
+                            "Order ID": shipment[
+                                "order_id"
+                            ],
+                            "Customer ID": shipment[
+                                "customer_id"
+                            ],
+                            "Country": shipment[
+                                "order_country"
+                            ],
+                            "Region": shipment[
+                                "order_region"
+                            ],
+                            "Shipping Mode": shipment[
+                                "shipping_mode"
+                            ],
+                            "Probability": probability,
+                            "Risk Level": risk_level,
+                            "Prediction": shipment[
+                                "risk_label"
+                            ],
+                            "Model": shipment[
+                                "model_run_id"
+                            ],
+                        }
+                    )
+
+                shipments_df = pd.DataFrame(
+                    shipment_rows
+                )
+
+                shipments_df = (
+                    shipments_df.sort_values(
+                        "Probability",
+                        ascending=False,
+                    )
+                )
+
+                total_orders = len(
+                    shipments_df
+                )
+
+                no_risk_count = (
+                    shipments_df[
+                        "Risk Level"
+                    ]
+                    == "No Risk"
+                ).sum()
+
+                low_risk_count = (
+                    shipments_df[
+                        "Risk Level"
+                    ]
+                    == "Low Risk"
+                ).sum()
+
+                medium_risk_count = (
+                    shipments_df[
+                        "Risk Level"
+                    ]
+                    == "Medium Risk"
+                ).sum()
+
+                high_risk_count = (
+                    shipments_df[
+                        "Risk Level"
+                    ]
+                    == "High Risk"
+                ).sum()
+
+                col1, col2, col3, col4, col5 = (
+                    st.columns(5)
+                )
+
+                col1.metric(
+                    "Total Orders",
+                    total_orders,
+                )
+
+                col2.metric(
+                    "🟢 No Risk",
+                    int(no_risk_count),
+                )
+
+                col3.metric(
+                    "🟡 Low Risk",
+                    int(low_risk_count),
+                )
+
+                col4.metric(
+                    "🟠 Medium Risk",
+                    int(medium_risk_count),
+                )
+
+                col5.metric(
+                    "🔴 High Risk",
+                    int(high_risk_count),
+                )
+
+                st.divider()
+
+                search_order = st.text_input(
+                    "Search by Order ID",
+                    placeholder=(
+                        "Enter an Order ID..."
+                    ),
+                    key="dashboard_search",
+                )
+
+                filtered_df = (
+                    shipments_df.copy()
+                )
+
+                if search_order.strip():
+                    try:
+                        searched_id = int(
+                            search_order.strip()
+                        )
+
+                        filtered_df = (
+                            shipments_df[
+                                shipments_df[
+                                    "Order ID"
+                                ]
+                                == searched_id
+                            ]
+                        )
+
+                        if filtered_df.empty:
+                            st.warning(
+                                "Order ID not found."
+                            )
+
+                    except ValueError:
+                        st.warning(
+                            "Order ID must be a number."
+                        )
+
+                display_df = (
+                    filtered_df.copy()
+                )
+
+                display_df[
+                    "Probability"
+                ] = display_df[
+                    "Probability"
+                ].map(
+                    lambda value: (
+                        f"{value:.1%}"
+                    )
+                )
+
+                st.subheader(
+                    "Orders by Risk"
+                )
+
+                styled_df = (
+                    display_df.style.apply(
+                        style_risk_row,
+                        axis=1,
+                    )
+                )
+
+                st.dataframe(
+                    styled_df,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                if not filtered_df.empty:
+                    st.subheader(
+                        "Quick Order Overview"
+                    )
+
+                    available_ids = (
+                        filtered_df[
+                            "Order ID"
+                        ]
+                        .astype(int)
+                        .tolist()
+                    )
+
+                    selected_order_id = (
+                        st.selectbox(
+                            "Select Order ID",
+                            available_ids,
+                            key=(
+                                "dashboard_order_select"
+                            ),
+                        )
+                    )
+
+                    if st.button(
+                        "View Details",
+                        type="primary",
+                        key=(
+                            "dashboard_view_details"
+                        ),
+                    ):
+                        st.session_state[
+                            "selected_order_id"
+                        ] = selected_order_id
+
+                        show_order_overview(
+                            selected_order_id
+                        )
+
+                        with st.expander(
+                            "More Details",
+                            expanded=True,
+                        ):
+                            raw_tab, processed_tab, prediction_tab = (
+                                st.tabs(
+                                    [
+                                        "Raw Order",
+                                        "Processed Order",
+                                        "Prediction",
+                                    ]
+                                )
+                            )
+
+                            with raw_tab:
+                                show_raw_order(
+                                    selected_order_id
+                                )
+
+                            with processed_tab:
+                                show_processed_order(
+                                    selected_order_id
+                                )
+
+                            with prediction_tab:
+                                show_prediction(
+                                    selected_order_id
+                                )
 
     except requests.RequestException as exc:
         st.error(
             f"Could not connect to FastAPI: {exc}"
         )
+
+
+# =========================================================
+# ORDER DETAILS
+# =========================================================
+
+with orders_tab:
+    st.header(
+        "Order Details"
+    )
+
+    order_search = st.text_input(
+        "Order ID",
+        placeholder=(
+            "Enter an Order ID..."
+        ),
+        key="details_search",
+    )
+
+    if st.button(
+        "Search Order",
+        key="details_search_button",
+    ):
+        if not order_search.strip():
+            st.warning(
+                "Enter an Order ID."
+            )
+
+        else:
+            try:
+                order_id = int(
+                    order_search.strip()
+                )
+
+                shipment = fetch_json(
+                    f"/shipments/{order_id}"
+                )
+
+                if shipment is None:
+                    st.error(
+                        "Order not found."
+                    )
+
+                else:
+                    st.session_state[
+                        "details_order_id"
+                    ] = order_id
+
+            except ValueError:
+                st.error(
+                    "Order ID must be a number."
+                )
+
+    details_order_id = (
+        st.session_state.get(
+            "details_order_id"
+        )
+    )
+
+    if details_order_id is not None:
+        show_order_overview(
+            details_order_id
+        )
+
+        st.divider()
+
+        overview_tab, raw_tab, processed_tab, prediction_tab = (
+            st.tabs(
+                [
+                    "Overview",
+                    "Raw Order",
+                    "Processed Order",
+                    "Prediction",
+                ]
+            )
+        )
+
+        with overview_tab:
+            shipment = fetch_json(
+                f"/shipments/{details_order_id}"
+            )
+
+            if shipment is not None:
+                overview_data = {
+                    "Order ID": shipment[
+                        "order_id"
+                    ],
+                    "Customer ID": shipment[
+                        "customer_id"
+                    ],
+                    "Country": shipment[
+                        "order_country"
+                    ],
+                    "Region": shipment[
+                        "order_region"
+                    ],
+                    "Shipping Mode": shipment[
+                        "shipping_mode"
+                    ],
+                    "Prediction": shipment[
+                        "risk_label"
+                    ],
+                    "Probability": (
+                        f"{shipment[
+                            'late_risk_probability'
+                        ]:.1%}"
+                    ),
+                    "Model Run": shipment[
+                        "model_run_id"
+                    ],
+                }
+
+                overview_table = pd.DataFrame(
+                    {
+                        "Field": list(
+                            overview_data.keys()
+                        ),
+                        "Value": list(
+                            overview_data.values()
+                        ),
+                    }
+                )
+
+                st.dataframe(
+                    overview_table,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+        with raw_tab:
+            show_raw_order(
+                details_order_id
+            )
+
+        with processed_tab:
+            show_processed_order(
+                details_order_id
+            )
+
+        with prediction_tab:
+            show_prediction(
+                details_order_id
+            )
+
+
+# =========================================================
+# NEW RAW ORDER
+# =========================================================
+
+with new_order_tab:
+    st.header(
+        "Process New Raw Order"
+    )
+
+    st.write(
+        "Paste one complete raw order JSON. "
+        "LogiGuard will validate, process, "
+        "store, and predict the order."
+    )
+
+    with st.form(
+        "raw_order_form"
+    ):
+        raw_order_text = st.text_area(
+            "Raw Order JSON",
+            height=400,
+            placeholder=(
+                "Paste one complete "
+                "raw order JSON here..."
+            ),
+        )
+
+        submitted = (
+            st.form_submit_button(
+                "Process Raw Order",
+                type="primary",
+            )
+        )
+
+    if submitted:
+        if not raw_order_text.strip():
+            st.error(
+                "Raw order JSON is required."
+            )
+
+        else:
+            try:
+                raw_order = json.loads(
+                    raw_order_text
+                )
+
+            except json.JSONDecodeError as exc:
+                st.error(
+                    f"Invalid JSON: {exc.msg}"
+                )
+
+            else:
+                try:
+                    prediction_response = (
+                        requests.post(
+                            (
+                                f"{API_URL}"
+                                "/predict/raw"
+                            ),
+                            json=raw_order,
+                            timeout=30,
+                        )
+                    )
+
+                    if (
+                        prediction_response
+                        .status_code
+                        == 200
+                    ):
+                        result = (
+                            prediction_response
+                            .json()
+                        )
+
+                        probability = result[
+                            "late_risk_probability"
+                        ]
+
+                        risk_level = (
+                            get_risk_level(
+                                probability
+                            )
+                        )
+
+                        st.success(
+                            "Order processed successfully."
+                        )
+
+                        result_col1, result_col2, result_col3 = (
+                            st.columns(3)
+                        )
+
+                        with result_col1:
+                            st.metric(
+                                "Order ID",
+                                result[
+                                    "order_id"
+                                ],
+                            )
+
+                        with result_col2:
+                            st.metric(
+                                "Risk Probability",
+                                f"{probability:.1%}",
+                            )
+
+                        with result_col3:
+                            st.metric(
+                                "Risk Level",
+                                (
+                                    f"{get_risk_emoji(risk_level)} "
+                                    f"{risk_level}"
+                                ),
+                            )
+
+                        st.write(
+                            "Prediction:",
+                            result[
+                                "risk_label"
+                            ],
+                        )
+
+                        st.write(
+                            "Model:",
+                            result[
+                                "model_run_id"
+                            ],
+                        )
+
+                    elif (
+                        prediction_response
+                        .status_code
+                        == 409
+                    ):
+                        detail = (
+                            prediction_response
+                            .json()
+                            .get(
+                                "detail",
+                                (
+                                    "Order already "
+                                    "exists."
+                                ),
+                            )
+                        )
+
+                        st.warning(
+                            detail
+                        )
+
+                    elif (
+                        prediction_response
+                        .status_code
+                        == 422
+                    ):
+                        detail = (
+                            prediction_response
+                            .json()
+                            .get(
+                                "detail",
+                                (
+                                    "Raw order "
+                                    "validation failed."
+                                ),
+                            )
+                        )
+
+                        st.error(
+                            detail
+                        )
+
+                    else:
+                        try:
+                            detail = (
+                                prediction_response
+                                .json()
+                                .get(
+                                    "detail",
+                                    (
+                                        "Prediction "
+                                        "failed."
+                                    ),
+                                )
+                            )
+
+                        except ValueError:
+                            detail = (
+                                "Prediction failed."
+                            )
+
+                        st.error(
+                            f"{detail} "
+                            f"Status code: "
+                            f"{prediction_response.status_code}"
+                        )
+
+                except requests.RequestException as exc:
+                    st.error(
+                        "Could not connect to "
+                        f"FastAPI: {exc}"
+                    )

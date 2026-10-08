@@ -245,8 +245,25 @@ def test_get_shipments_returns_saved_predictions():
     finally:
         db.close()
 
+
 def test_get_single_shipment_returns_saved_order():
     order_id = 9999004
+
+    db = SessionLocal()
+
+    try:
+        db.query(Prediction).filter(
+            Prediction.order_id == order_id
+        ).delete()
+
+        db.query(Order).filter(
+            Order.order_id == order_id
+        ).delete()
+
+        db.commit()
+
+    finally:
+        db.close()
 
     payload = {
         "order_id": order_id,
@@ -265,16 +282,42 @@ def test_get_single_shipment_returns_saved_order():
         "num_unique_departments": 1,
     }
 
-    create_response = client.post("/predict", json=payload)
-    assert create_response.status_code == 200
+    try:
+        create_response = client.post(
+            "/predict",
+            json=payload,
+        )
 
-    response = client.get(f"/shipments/{order_id}")
+        assert create_response.status_code == 200
 
-    assert response.status_code == 200
+        response = client.get(
+            f"/shipments/{order_id}"
+        )
 
-    data = response.json()
+        assert response.status_code == 200
 
-    assert data["order_id"] == order_id
-    assert "late_risk_probability" in data
-    assert "risk_label" in data
-    assert "model_run_id" in data
+        data = response.json()
+
+        assert data["order_id"] == order_id
+        assert "late_risk_probability" in data
+        assert "risk_label" in data
+        assert "model_run_id" in data
+
+    finally:
+        db = SessionLocal()
+
+        try:
+            db.query(Prediction).filter(
+                Prediction.order_id == order_id
+            ).delete()
+
+            db.query(Order).filter(
+                Order.order_id == order_id
+            ).delete()
+
+            db.commit()
+
+        finally:
+            db.close()
+
+

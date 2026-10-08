@@ -628,3 +628,255 @@ Default local value:
 Verification:
 - Shipment table loads successfully.
 - Selected shipment details still load successfully.
+
+
+
+
+## 2026-10-06 — Raw Order Inference Preparation
+
+### Completed
+
+- Added `src/features/inference.py`.
+- Added `prepare_order_for_inference()`.
+- The new inference preparation logic accepts one raw order represented by one or more item-level rows.
+- The function validates that the input contains exactly one `Order Id`.
+- The function selects only the raw fields required for prediction-time preparation.
+- The function parses `order date (DateOrders)`.
+- The function applies the existing `Customer State` cleaning rule.
+- The function always aggregates the order to order level, even when the order contains only one item.
+- Aggregation creates:
+  - `total_quantity`
+  - `total_discount`
+  - `num_unique_products`
+  - `num_unique_categories`
+  - `num_unique_departments`
+- The function returns data in the same shape currently expected by the existing `POST /predict` endpoint.
+
+### Testing
+
+Added:
+
+`tests/test_inference_preparation.py`
+
+The test verifies that a raw order with multiple item rows is correctly aggregated into one order-level object.
+
+Test command:
+
+```bash
+python -m pytest tests/test_inference_preparation.py -v
+
+
+
+### Additional Inference Test
+
+Added a single-item order test to confirm that aggregation is always applied, even when an order contains only one item.
+
+The test verifies that a single raw item is converted to the expected order-level fields:
+
+- `total_quantity`
+- `total_discount`
+- `num_unique_products`
+- `num_unique_categories`
+- `num_unique_departments`
+
+Test command:
+
+```bash
+python -m pytest tests/test_inference_preparation.py -v
+
+Result:
+2 passed
+
+
+
+### Inference Validation Tests
+
+Added validation coverage for the raw-order inference preparation path.
+
+The tests verify that the inference preparation rejects:
+
+- empty input
+- multiple `Order Id` values in one request
+- negative `Order Item Quantity`
+
+Existing tests also continue to verify:
+
+- aggregation of multi-item orders
+- aggregation of single-item orders
+
+Test command:
+
+```bash
+python -m pytest tests/test_inference_preparation.py -v
+
+
+## Raw Order Storage
+
+Added a new PostgreSQL table for preserving original incoming order payloads.
+
+### Changes
+
+- Added `RawOrder` ORM model.
+- Added PostgreSQL `JSONB` storage for raw order payloads.
+- Added `raw_orders` table with:
+  - `id`
+  - `order_id`
+  - `raw_payload`
+  - `received_at`
+- Updated database table creation imports.
+
+### Verification
+
+Ran:
+
+```bash
+python -m src.database.create_tables
+
+
+## Raw Order API Schema
+
+### Completed
+
+- Expanded the raw-order API schema to represent a complete order-time snapshot.
+- Added customer information, order destination fields, shipping configuration, and detailed item/product fields.
+- Preserved `items` as a list so one order can contain multiple items.
+- Excluded post-outcome fields such as:
+  - `Days for shipping (real)`
+  - `Delivery Status`
+  - `Late_delivery_risk`
+  - `shipping date (DateOrders)`
+- Excluded `Customer Password`.
+
+### Testing
+
+Added:
+
+`tests/test_raw_order_schema.py`
+
+The test verifies that a valid raw order with nested items is accepted by the Pydantic schema.
+
+Test command:
+
+```bash
+python -m pytest tests/test_raw_order_schema.py -v
+
+
+
+## Raw Order Inference Adapter
+
+### Completed
+
+- Added a production-only adapter for raw order payloads.
+- Converts nested `items[]` into item-level rows expected by the existing inference preparation logic.
+- Reuses the existing inference aggregation without changing any training, preprocessing, or model-training files.
+- Verified multi-item raw orders aggregate correctly before prediction.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_inference_preparation.py -v
+
+
+## End-to-End Raw Order Prediction Pipeline
+
+### Completed
+
+- Added a new production API flow for complete raw orders.
+- A validated raw order is first saved in PostgreSQL `raw_orders`.
+- The nested `items[]` payload is converted into temporary item-level rows.
+- The existing inference preparation logic validates, cleans, and aggregates the order into order-level features.
+- The processed order is saved in `orders` before model inference.
+- The existing trained model is used without retraining or changing the training/preprocessing pipeline.
+- Prediction results are saved separately in `predictions`.
+
+### End-to-End Verification
+
+Tested with order:
+
+`900001`
+
+Verified:
+
+- `raw_orders` contains the original order.
+- `orders` contains the aggregated order:
+  - `total_quantity = 3`
+  - `total_discount = 15`
+  - `num_unique_products = 2`
+  - `num_unique_categories = 1`
+  - `num_unique_departments = 1`
+- `predictions` contains:
+  - `late_risk_probability = 0.3409925699234009`
+  - `late_risk_prediction = 0`
+  - `risk_label = Not Late`
+  - `model_run_id = 2026-10-02_10-36`
+
+The complete flow was successfully verified:
+
+RawOrderInput
+→ raw_orders
+→ item-level inference preparation
+→ orders
+→ trained model
+→ predictions
+
+
+## Raw Order Prediction Failure Handling
+
+### Completed
+
+- Added an integration test for prediction failure after raw-order processing.
+- Simulated a model inference failure without modifying the trained model.
+- Verified that:
+  - the raw order remains stored in `raw_orders`;
+  - the processed order remains stored in `orders`;
+  - no prediction row is created in `predictions`.
+- This confirms that raw and processed order data are preserved for debugging and retry when model inference fails.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_raw_order_pipeline.py -v
+
+
+
+
+## API Test Isolation
+
+### Completed
+
+- Fixed the single-shipment API test so it no longer depends on database state from previous test runs.
+- Added cleanup before and after the test.
+- Confirmed the complete test suite passes successfully.
+
+### Verification
+
+Ran:
+
+```bash
+python -m pytest -v
+
+
+## Inference Dashboard and Order Detail Views
+
+### Completed
+
+- Added read-only API endpoints for raw orders, processed orders, and predictions.
+- Added dashboard risk categorization:
+  - No Risk
+  - Low Risk
+  - Medium Risk
+  - High Risk
+- Added probability-based shipment sorting.
+- Added Order ID search.
+- Added compact order overview.
+- Added detailed views for:
+  - Raw Order
+  - Processed Order
+  - Prediction
+- Added raw JSON order ingestion through Streamlit.
+- Verified Streamlit → FastAPI → PostgreSQL → trained model integration.
+- Training and model preprocessing files were not modified.

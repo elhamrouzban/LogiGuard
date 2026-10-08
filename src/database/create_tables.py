@@ -1,5 +1,5 @@
 from src.database.connection import Base, engine
-from src.database.orm_models import Order, Prediction
+from src.database.orm_models import Order, Prediction, RawOrder
 
 
 def create_tables():
