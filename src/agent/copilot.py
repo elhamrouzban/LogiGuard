@@ -1,5 +1,6 @@
 
 import re
+from src.agent.validator import validate_copilot_result
 
 from src.agent.tools import (
     find_similar_shipments,
@@ -18,7 +19,7 @@ def extract_order_id(question: str) -> int | None:
 
 
 def run_copilot(question: str) -> dict:
-    
+
     order_id = extract_order_id(question)
 
     if order_id is None:
@@ -44,12 +45,12 @@ def run_copilot(question: str) -> dict:
                 ),
             }
 
-        return {
+        return _validated_result({
             "status": "success",
             "intent": "similar_shipments",
             "order_id": order_id,
             "similar_shipments": shipments,
-        }
+        })
 
     if (
         "prediction" in normalized_question
@@ -65,12 +66,12 @@ def run_copilot(question: str) -> dict:
                 "message": "Prediction not found.",
             }
 
-        return {
+        return _validated_result({
             "status": "success",
             "intent": "prediction",
             "order_id": order_id,
             "prediction": prediction,
-        }
+        })
 
     shipment = get_shipment(order_id)
 
@@ -81,9 +82,23 @@ def run_copilot(question: str) -> dict:
             "message": "Shipment not found.",
         }
 
-    return {
+    return _validated_result({
         "status": "success",
         "intent": "shipment_status",
         "order_id": order_id,
         "shipment": shipment,
-    }
+    })
+
+
+
+def _validated_result(result: dict) -> dict:
+    validation = validate_copilot_result(result)
+
+    if not validation["valid"]:
+        return {
+            "status": "error",
+            "message": "Copilot response failed validation.",
+            "validation_errors": validation["errors"],
+        }
+
+    return result

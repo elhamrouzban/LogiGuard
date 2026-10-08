@@ -977,3 +977,37 @@ Tested in FastAPI Swagger UI:
 
 ```text
 POST /copilot
+
+
+
+## Operations Copilot - Response Validation
+
+### Completed
+
+- Added a deterministic validator for Operations Copilot responses.
+- Added validation for:
+  - response status;
+  - supported Copilot intents;
+  - positive Order IDs;
+  - prediction evidence;
+  - shipment evidence;
+  - similar-shipment structures;
+  - prediction probability range;
+  - prediction threshold;
+  - consistency between probability, threshold, and predicted class.
+- Integrated validation into successful Copilot responses before they are returned to the API.
+- Invalid Copilot responses are converted into a safe structured error response.
+- Added tests that verify both standalone validator behavior and validator execution inside the Copilot flow.
+
+### Testing
+
+Validated:
+
+- valid prediction responses;
+- mismatched Order IDs;
+- inconsistent prediction class and probability;
+- missing shipment evidence;
+- structured error responses;
+- rejection of invalid tool output inside the Copilot workflow.
+
+All Agent validation and Copilot tests passed.
