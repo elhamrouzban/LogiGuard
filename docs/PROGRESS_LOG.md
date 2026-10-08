@@ -880,3 +880,34 @@ python -m pytest -v
 - Added raw JSON order ingestion through Streamlit.
 - Verified Streamlit → FastAPI → PostgreSQL → trained model integration.
 - Training and model preprocessing files were not modified.
+
+
+## Agent Read-Only Tools
+
+### Completed
+
+Added read-only tools for the Operations Copilot:
+
+- `get_shipment(order_id)`
+  - Returns processed order and prediction information.
+
+- `get_prediction(order_id)`
+  - Returns prediction probability, label, threshold, model run, and timestamp.
+
+- `find_similar_shipments(order_id, limit)`
+  - Finds shipments with the same country, region, and shipping mode.
+  - Ranks them by similarity in late-risk probability.
+
+### Design
+
+- Tools are read-only.
+- No database records are modified.
+- No training, preprocessing, or model files were changed.
+- Tools use the existing PostgreSQL order and prediction data.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_agent_tools.py -v
