@@ -911,3 +911,50 @@ Ran:
 
 ```bash
 python -m pytest tests/test_agent_tools.py -v
+
+
+
+## Operations Copilot Router
+
+### Completed
+
+- Added `src/agent/copilot.py`.
+- Added Order ID extraction from natural-language questions.
+- Added deterministic intent routing for:
+  - shipment status
+  - prediction / risk questions
+  - similar shipment lookup
+- Connected the Copilot to the existing read-only agent tools.
+- Kept the implementation read-only and independent from training and model files.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_copilot.py -v
+
+
+## Operations Copilot - Read-Only Agent Layer
+
+### Completed
+
+- Added a new `src/agent` module for the Operations Copilot.
+- Added read-only agent tools:
+  - `get_shipment(order_id)`
+  - `get_prediction(order_id)`
+  - `find_similar_shipments(order_id, limit)`
+- Added a deterministic Copilot router that:
+  - extracts an Order ID from a natural-language question;
+  - detects whether the user is asking about shipment status, prediction risk, or similar shipments;
+  - calls the appropriate read-only tool;
+  - returns structured results.
+- The Copilot does not modify PostgreSQL data.
+- No training, preprocessing, or trained-model files were changed.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_agent_tools.py -v
