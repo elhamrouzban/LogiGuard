@@ -330,12 +330,14 @@ st.caption(
 )
 
 
-dashboard_tab, orders_tab, new_order_tab = (
+dashboard_tab, orders_tab, new_order_tab, operations_colilot_tab = (
     st.tabs(
         [
             "Dashboard",
             "Order Details",
             "New Raw Order",
+            "Operations Copilot",
+
         ]
     )
 )
@@ -968,3 +970,33 @@ with new_order_tab:
                         "Could not connect to "
                         f"FastAPI: {exc}"
                     )
+
+
+# =========================================================
+# OPERATIONS COPILOT
+# =========================================================
+
+
+st.subheader("Operations Copilot")
+
+question = st.text_input(
+    "Ask a question about an order",
+    placeholder="What is the risk prediction for order 900002?",
+)
+
+if st.button("Ask Copilot"):
+    if not question.strip():
+        st.warning("Please enter a question.")
+    else:
+        response = requests.post(
+            f"{API_URL}/copilot",
+            json={"question": question},
+            timeout=30,
+        )
+
+        if response.ok:
+            st.json(response.json())
+        else:
+            st.error(
+                f"Copilot request failed: {response.status_code}"
+            )

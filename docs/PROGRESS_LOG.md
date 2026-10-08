@@ -1011,3 +1011,24 @@ Validated:
 - rejection of invalid tool output inside the Copilot workflow.
 
 All Agent validation and Copilot tests passed.
+
+
+
+## Operations Copilot - Streamlit Integration
+
+### Completed
+
+- Added an Operations Copilot interface to the Streamlit UI.
+- Users can submit natural-language questions about orders.
+- Streamlit sends Copilot questions to the FastAPI `/copilot` endpoint.
+- Copilot responses are returned to the UI after tool execution and validation.
+- Verified end-to-end flow from Streamlit to FastAPI, Copilot tools, PostgreSQL, validator, and back to the UI.
+
+### Verification
+
+Tested with:
+
+```text
+What is the risk prediction for order 900002?
+
+result: The UI successfully returned the stored prediction details for the requested order.
