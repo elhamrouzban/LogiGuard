@@ -10,6 +10,12 @@ def test_copilot_routes_prediction_question():
     assert result["intent"] == "prediction"
     assert result["order_id"] == 900002
     assert "prediction" in result
+    assert result["prediction"]["risk_level"] in {
+    "No Risk",
+    "Low Risk",
+    "Medium Risk",
+    "High Risk",
+    }
 
 
 def test_copilot_routes_similar_shipments_question():

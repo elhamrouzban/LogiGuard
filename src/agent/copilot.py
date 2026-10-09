@@ -7,6 +7,7 @@ from src.agent.tools import (
     get_prediction,
     get_shipment,
 )
+from src.shared.risk import get_risk_level
 
 
 def extract_order_id(question: str) -> int | None:
@@ -65,6 +66,11 @@ def run_copilot(question: str) -> dict:
                 "order_id": order_id,
                 "message": "Prediction not found.",
             }
+
+        prediction = dict(prediction)
+        prediction["risk_level"] = get_risk_level(
+            prediction["late_risk_probability"]
+        )
 
         return _validated_result({
             "status": "success",

@@ -1089,3 +1089,16 @@ python -m pip install -e ".[dev]"
 - Updated the Streamlit UI to import and use the shared business rule.
 - Added boundary tests in `tests/test_risk.py`.
 - Full regression suite passes: 27 passed, 2 warnings.
+
+
+### Added business risk level to Copilot prediction evidence
+
+- Reused the shared `get_risk_level()` business rule inside the Operations Copilot.
+- Enriched prediction evidence with a deterministic `risk_level` derived from `late_risk_probability`.
+- Risk levels remain presentation/business labels:
+  - No Risk: < 0.40
+  - Low Risk: 0.40–<0.60
+  - Medium Risk: 0.60–<0.80
+  - High Risk: >= 0.80
+- The ML model remains a binary Late / Not Late classifier.
+- Added Copilot test coverage to verify that prediction responses include a valid business risk level.
