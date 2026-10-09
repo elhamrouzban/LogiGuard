@@ -1077,3 +1077,15 @@ Verified in the Streamlit UI:
 ```bash
 python -m pip install -e ".[dev]"
 - Verified the complete test suite after dependency configuration.
+
+### Shared risk-level business logic
+
+- Moved the UI-only risk-level mapping into `src/business/risk.py`.
+- Added shared `get_risk_level(probability)` logic for:
+  - No Risk: < 0.40
+  - Low Risk: 0.40–<0.60
+  - Medium Risk: 0.60–<0.80
+  - High Risk: >= 0.80
+- Updated the Streamlit UI to import and use the shared business rule.
+- Added boundary tests in `tests/test_risk.py`.
+- Full regression suite passes: 27 passed, 2 warnings.

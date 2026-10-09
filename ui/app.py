@@ -5,6 +5,8 @@ import pandas as pd
 import requests
 import streamlit as st
 
+from src.shared.risk import get_risk_level
+
 
 st.set_page_config(
     page_title="LogiGuard AI",
@@ -17,19 +19,6 @@ API_URL = os.getenv(
     "API_URL",
     "http://127.0.0.1:8000",
 )
-
-
-def get_risk_level(probability: float) -> str:
-    if probability < 0.40:
-        return "No Risk"
-
-    if probability < 0.60:
-        return "Low Risk"
-
-    if probability < 0.80:
-        return "Medium Risk"
-
-    return "High Risk"
 
 
 def get_risk_emoji(risk_level: str) -> str:
