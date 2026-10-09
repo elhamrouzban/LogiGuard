@@ -880,3 +880,179 @@ python -m pytest -v
 - Added raw JSON order ingestion through Streamlit.
 - Verified Streamlit → FastAPI → PostgreSQL → trained model integration.
 - Training and model preprocessing files were not modified.
+
+
+## Agent Read-Only Tools
+
+### Completed
+
+Added read-only tools for the Operations Copilot:
+
+- `get_shipment(order_id)`
+  - Returns processed order and prediction information.
+
+- `get_prediction(order_id)`
+  - Returns prediction probability, label, threshold, model run, and timestamp.
+
+- `find_similar_shipments(order_id, limit)`
+  - Finds shipments with the same country, region, and shipping mode.
+  - Ranks them by similarity in late-risk probability.
+
+### Design
+
+- Tools are read-only.
+- No database records are modified.
+- No training, preprocessing, or model files were changed.
+- Tools use the existing PostgreSQL order and prediction data.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_agent_tools.py -v
+
+
+
+## Operations Copilot Router
+
+### Completed
+
+- Added `src/agent/copilot.py`.
+- Added Order ID extraction from natural-language questions.
+- Added deterministic intent routing for:
+  - shipment status
+  - prediction / risk questions
+  - similar shipment lookup
+- Connected the Copilot to the existing read-only agent tools.
+- Kept the implementation read-only and independent from training and model files.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_copilot.py -v
+
+
+## Operations Copilot - Read-Only Agent Layer
+
+### Completed
+
+- Added a new `src/agent` module for the Operations Copilot.
+- Added read-only agent tools:
+  - `get_shipment(order_id)`
+  - `get_prediction(order_id)`
+  - `find_similar_shipments(order_id, limit)`
+- Added a deterministic Copilot router that:
+  - extracts an Order ID from a natural-language question;
+  - detects whether the user is asking about shipment status, prediction risk, or similar shipments;
+  - calls the appropriate read-only tool;
+  - returns structured results.
+- The Copilot does not modify PostgreSQL data.
+- No training, preprocessing, or trained-model files were changed.
+
+### Testing
+
+Ran:
+
+```bash
+python -m pytest tests/test_agent_tools.py -v
+
+
+
+## Operations Copilot API Endpoint
+
+### Completed
+
+- Added `POST /copilot` to FastAPI.
+- Added `CopilotRequest` schema with a natural-language `question`.
+- Connected the API endpoint to the existing deterministic Operations Copilot.
+- Verified that Copilot questions can trigger the appropriate read-only agent tool.
+- Confirmed prediction queries return structured PostgreSQL-backed prediction data.
+
+### Verification
+
+Tested in FastAPI Swagger UI:
+
+```text
+POST /copilot
+
+
+
+## Operations Copilot - Response Validation
+
+### Completed
+
+- Added a deterministic validator for Operations Copilot responses.
+- Added validation for:
+  - response status;
+  - supported Copilot intents;
+  - positive Order IDs;
+  - prediction evidence;
+  - shipment evidence;
+  - similar-shipment structures;
+  - prediction probability range;
+  - prediction threshold;
+  - consistency between probability, threshold, and predicted class.
+- Integrated validation into successful Copilot responses before they are returned to the API.
+- Invalid Copilot responses are converted into a safe structured error response.
+- Added tests that verify both standalone validator behavior and validator execution inside the Copilot flow.
+
+### Testing
+
+Validated:
+
+- valid prediction responses;
+- mismatched Order IDs;
+- inconsistent prediction class and probability;
+- missing shipment evidence;
+- structured error responses;
+- rejection of invalid tool output inside the Copilot workflow.
+
+All Agent validation and Copilot tests passed.
+
+
+
+## Operations Copilot - Streamlit Integration
+
+### Completed
+
+- Added an Operations Copilot interface to the Streamlit UI.
+- Users can submit natural-language questions about orders.
+- Streamlit sends Copilot questions to the FastAPI `/copilot` endpoint.
+- Copilot responses are returned to the UI after tool execution and validation.
+- Verified end-to-end flow from Streamlit to FastAPI, Copilot tools, PostgreSQL, validator, and back to the UI.
+
+### Verification
+
+Tested with:
+
+```text
+What is the risk prediction for order 900002?
+
+result: The UI successfully returned the stored prediction details for the requested order.
+
+## Operations Copilot - Controlled Streamlit Query Selection
+
+### Completed
+
+- Replaced the free-text Copilot input in Streamlit with a controlled query workflow.
+- Added a searchable Order ID selector populated from existing shipments.
+- Users can type to filter Order IDs but must select a valid existing Order ID.
+- Added a controlled action selector with:
+  - Risk Prediction
+  - Shipment Status
+  - Similar Shipments
+- Streamlit builds a deterministic Copilot query from the selected Order ID and action.
+- The existing `/copilot` endpoint, agent tools, and validator remain unchanged.
+- Verified the Copilot workflow successfully from Streamlit.
+
+### Verification
+
+Verified in the Streamlit UI:
+
+- searchable Order ID filtering;
+- valid Order ID selection;
+- controlled Copilot action selection;
+- successful Copilot request and response.
