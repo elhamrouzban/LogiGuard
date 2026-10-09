@@ -1056,3 +1056,24 @@ Verified in the Streamlit UI:
 - valid Order ID selection;
 - controlled Copilot action selection;
 - successful Copilot request and response.
+
+
+## Project Dependency Management
+
+### Completed
+
+- Added a root-level `pyproject.toml`.
+- Defined the LogiGuard package metadata and supported Python version.
+- Added direct runtime dependencies for:
+  - FastAPI and Pydantic
+  - PostgreSQL / SQLAlchemy
+  - pandas / joblib / scikit-learn / XGBoost
+  - Streamlit / requests / Uvicorn
+  - python-dotenv
+  - Google Gemini SDK (`google-genai`)
+- Added `pytest` as a development dependency.
+- Verified editable installation with:
+
+```bash
+python -m pip install -e ".[dev]"
+- Verified the complete test suite after dependency configuration.
