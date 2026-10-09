@@ -11,6 +11,9 @@ venv/
 # OS / editor files
 .DS_Store
 
+# metadata files
+*.egg-info/
+
 # Local datasets
 data/raw/*
 data/interim/*
