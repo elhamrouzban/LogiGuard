@@ -1032,3 +1032,27 @@ Tested with:
 What is the risk prediction for order 900002?
 
 result: The UI successfully returned the stored prediction details for the requested order.
+
+## Operations Copilot - Controlled Streamlit Query Selection
+
+### Completed
+
+- Replaced the free-text Copilot input in Streamlit with a controlled query workflow.
+- Added a searchable Order ID selector populated from existing shipments.
+- Users can type to filter Order IDs but must select a valid existing Order ID.
+- Added a controlled action selector with:
+  - Risk Prediction
+  - Shipment Status
+  - Similar Shipments
+- Streamlit builds a deterministic Copilot query from the selected Order ID and action.
+- The existing `/copilot` endpoint, agent tools, and validator remain unchanged.
+- Verified the Copilot workflow successfully from Streamlit.
+
+### Verification
+
+Verified in the Streamlit UI:
+
+- searchable Order ID filtering;
+- valid Order ID selection;
+- controlled Copilot action selection;
+- successful Copilot request and response.

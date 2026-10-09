@@ -976,27 +976,94 @@ with new_order_tab:
 # OPERATIONS COPILOT
 # =========================================================
 
+with operations_colilot_tab:
+    st.header("Operations Copilot")
 
-st.subheader("Operations Copilot")
+    shipments = fetch_json("/shipments")
 
-question = st.text_input(
-    "Ask a question about an order",
-    placeholder="What is the risk prediction for order 900002?",
-)
-
-if st.button("Ask Copilot"):
-    if not question.strip():
-        st.warning("Please enter a question.")
-    else:
-        response = requests.post(
-            f"{API_URL}/copilot",
-            json={"question": question},
-            timeout=30,
+    if not shipments:
+        st.info(
+            "No shipments are available for Copilot queries."
         )
 
-        if response.ok:
-            st.json(response.json())
-        else:
-            st.error(
-                f"Copilot request failed: {response.status_code}"
-            )
+    else:
+        order_ids = sorted(
+            shipment["order_id"]
+            for shipment in shipments
+        )
+
+        selected_order_id = st.selectbox(
+            "Order ID",
+            options=order_ids,
+            index=None,
+            placeholder="Search and select an Order ID...",
+            key="copilot_order_id",
+        )
+
+        action = st.selectbox(
+            "What would you like to know?",
+            options=[
+                "Risk Prediction",
+                "Shipment Status",
+                "Similar Shipments",
+            ],
+            index=None,
+            placeholder="Select an action...",
+            key="copilot_action",
+        )
+
+        if st.button(
+            "Ask Copilot",
+            type="primary",
+            key="copilot_submit",
+        ):
+            if selected_order_id is None:
+                st.warning(
+                    "Please select an Order ID."
+                )
+
+            elif action is None:
+                st.warning(
+                    "Please select an action."
+                )
+
+            else:
+                if action == "Risk Prediction":
+                    question = (
+                        "What is the risk prediction "
+                        f"for order {selected_order_id}?"
+                    )
+
+                elif action == "Shipment Status":
+                    question = (
+                        "What is the shipment status "
+                        f"for order {selected_order_id}?"
+                    )
+
+                else:
+                    question = (
+                        "Find similar shipments "
+                        f"to order {selected_order_id}."
+                    )
+
+                try:
+                    response = requests.post(
+                        f"{API_URL}/copilot",
+                        json={"question": question},
+                        timeout=30,
+                    )
+
+                    if response.ok:
+                        st.json(response.json())
+
+                    else:
+                        st.error(
+                            "Copilot request failed: "
+                            f"{response.status_code}"
+                        )
+
+                except requests.RequestException as exc:
+                    st.error(
+                        "Could not connect to FastAPI: "
+                        f"{exc}"
+                    )
