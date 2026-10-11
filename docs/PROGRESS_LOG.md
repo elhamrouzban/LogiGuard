@@ -1102,3 +1102,20 @@ python -m pip install -e ".[dev]"
   - High Risk: >= 0.80
 - The ML model remains a binary Late / Not Late classifier.
 - Added Copilot test coverage to verify that prediction responses include a valid business risk level.
+
+### Added grounded Gemini response service
+
+- Added `src/agent/llm.py` as the Gemini integration layer for grounded Copilot responses.
+- Configured Gemini access through `GEMINI_API_KEY`.
+- Added a grounded prompt that restricts responses to validated evidence only.
+- Updated the prompt for logistics operations users so responses prioritize:
+  - business risk level
+  - late-delivery risk percentage when useful
+  - whether the order needs operational attention
+- Explicitly prevented the LLM from:
+  - inventing facts or causes
+  - changing numeric values
+  - deriving its own risk level
+  - exposing technical fields unless requested
+- Added `tests/test_llm.py` with a mocked Gemini client so CI does not depend on live external API availability.
+- Verified full regression suite: 27 passed, 2 warnings.
