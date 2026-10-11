@@ -8,6 +8,7 @@ from src.agent.tools import (
     get_shipment,
 )
 from src.shared.risk import get_risk_level
+from src.agent.llm import generate_grounded_response
 
 
 def extract_order_id(question: str) -> int | None:
@@ -51,7 +52,9 @@ def run_copilot(question: str) -> dict:
             "intent": "similar_shipments",
             "order_id": order_id,
             "similar_shipments": shipments,
-        })
+            },
+            question,
+        )
 
     if (
         "prediction" in normalized_question
@@ -77,7 +80,9 @@ def run_copilot(question: str) -> dict:
             "intent": "prediction",
             "order_id": order_id,
             "prediction": prediction,
-        })
+            },
+            question,
+        )
 
     shipment = get_shipment(order_id)
 
@@ -88,16 +93,22 @@ def run_copilot(question: str) -> dict:
             "message": "Shipment not found.",
         }
 
-    return _validated_result({
+    return _validated_result(
+        {
         "status": "success",
         "intent": "shipment_status",
         "order_id": order_id,
         "shipment": shipment,
-    })
+        },
+        question,
+    )
 
 
 
-def _validated_result(result: dict) -> dict:
+def _validated_result(
+    result: dict,
+    question: str,
+) -> dict:
     validation = validate_copilot_result(result)
 
     if not validation["valid"]:
@@ -106,5 +117,15 @@ def _validated_result(result: dict) -> dict:
             "message": "Copilot response failed validation.",
             "validation_errors": validation["errors"],
         }
+
+    try:
+        result["answer"] = generate_grounded_response(
+            question=question,
+            evidence=result,
+        )
+    except Exception:
+        # Gemini is optional. Validated Copilot evidence
+        # must remain available if the external LLM fails.
+        pass
 
     return result
