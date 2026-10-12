@@ -4,6 +4,7 @@ import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from typing import Literal
 
 from src.database.connection import SessionLocal, get_db
 from src.database.orm_models import Order, Prediction, RawOrder
@@ -124,8 +125,12 @@ class ShipmentSummary(BaseModel):
 
 
 class CopilotRequest(BaseModel):
-    question: str
-
+    order_id: int = Field(gt=0)
+    action: Literal[
+        "prediction",
+        "shipment_status",
+        "similar_shipments",
+    ]
 
 
 @app.get("/health")
@@ -706,6 +711,8 @@ def predict_raw_order(raw_order: RawOrderInput):
 
 @app.post("/copilot")
 def copilot(request: CopilotRequest):
-    return run_copilot(request.question)
-
+    return run_copilot(
+        order_id=request.order_id,
+        action=request.action,
+    )
 

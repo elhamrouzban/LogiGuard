@@ -1,26 +1,41 @@
+import pytest
+
 from src.agent.copilot import run_copilot
 
 
-def test_copilot_routes_prediction_question():
+@pytest.fixture(autouse=True)
+def mock_grounded_response(monkeypatch):
+    monkeypatch.setattr(
+        "src.agent.copilot.generate_grounded_response",
+        lambda question, evidence: "Mocked grounded response.",
+    )
+
+
+def test_copilot_routes_prediction_action():
     result = run_copilot(
-        "What is the risk prediction for order 900002?"
+        order_id=900002,
+        action="prediction",
     )
 
     assert result["status"] == "success"
     assert result["intent"] == "prediction"
     assert result["order_id"] == 900002
     assert "prediction" in result
+
     assert result["prediction"]["risk_level"] in {
-    "No Risk",
-    "Low Risk",
-    "Medium Risk",
-    "High Risk",
+        "No Risk",
+        "Low Risk",
+        "Medium Risk",
+        "High Risk",
     }
 
+    assert result["answer"] == "Mocked grounded response."
 
-def test_copilot_routes_similar_shipments_question():
+
+def test_copilot_routes_similar_shipments_action():
     result = run_copilot(
-        "Find similar shipments to order 900002."
+        order_id=900002,
+        action="similar_shipments",
     )
 
     assert result["order_id"] == 900002
@@ -30,18 +45,21 @@ def test_copilot_routes_similar_shipments_question():
     ]
 
 
-def test_copilot_requires_order_id():
+def test_copilot_routes_shipment_status_action():
     result = run_copilot(
-        "What is the shipment status?"
+        order_id=900002,
+        action="shipment_status",
     )
 
-    assert result["status"] == "error"
-    assert result["message"] == (
-        "Please provide an Order ID."
-    )
+    assert result["status"] == "success"
+    assert result["intent"] == "shipment_status"
+    assert result["order_id"] == 900002
+    assert "shipment" in result
 
 
-def test_copilot_rejects_invalid_prediction_response(monkeypatch):
+def test_copilot_rejects_invalid_prediction_response(
+    monkeypatch,
+):
     def fake_get_prediction(order_id: int):
         return {
             "order_id": order_id,
@@ -59,12 +77,17 @@ def test_copilot_rejects_invalid_prediction_response(monkeypatch):
     )
 
     result = run_copilot(
-        "What is the risk prediction for order 900002?"
+        order_id=900002,
+        action="prediction",
     )
 
     assert result["status"] == "error"
-    assert result["message"] == "Copilot response failed validation."
+    assert result["message"] == (
+        "Copilot response failed validation."
+    )
+
     assert (
-        "Prediction class is inconsistent with probability and threshold."
+        "Prediction class is inconsistent "
+        "with probability and threshold."
         in result["validation_errors"]
     )

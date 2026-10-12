@@ -1017,28 +1017,20 @@ with operations_colilot_tab:
                 )
 
             else:
-                if action == "Risk Prediction":
-                    question = (
-                        "What is the risk prediction "
-                        f"for order {selected_order_id}?"
-                    )
 
-                elif action == "Shipment Status":
-                    question = (
-                        "What is the shipment status "
-                        f"for order {selected_order_id}?"
-                    )
-
-                else:
-                    question = (
-                        "Find similar shipments "
-                        f"to order {selected_order_id}."
-                    )
+                action_mapping = {
+                    "Risk Prediction": "prediction",
+                    "Shipment Status": "shipment_status",
+                    "Similar Shipments": "similar_shipments",
+                }
 
                 try:
                     response = requests.post(
                         f"{API_URL}/copilot",
-                        json={"question": question},
+                        json={
+                            "order_id": selected_order_id,
+                            "action": action_mapping[action],
+                        },
                         timeout=30,
                     )
 

@@ -1,5 +1,5 @@
 
-import re
+
 from src.agent.validator import validate_copilot_result
 
 from src.agent.tools import (
@@ -10,29 +10,35 @@ from src.agent.tools import (
 from src.shared.risk import get_risk_level
 from src.agent.llm import generate_grounded_response
 
+def _build_llm_question(
+    order_id: int,
+    action: str,
+) -> str:
+    questions = {
+        "prediction": (
+            f"What is the risk prediction for order {order_id}?"
+        ),
+        "shipment_status": (
+            f"What is the shipment status for order {order_id}?"
+        ),
+        "similar_shipments": (
+            f"Find similar shipments to order {order_id}."
+        ),
+    }
 
-def extract_order_id(question: str) -> int | None:
-    match = re.search(r"\b\d+\b", question)
-
-    if match is None:
-        return None
-
-    return int(match.group())
+    return questions[action]
 
 
-def run_copilot(question: str) -> dict:
+def run_copilot(order_id: str, action: str) -> dict:
 
-    order_id = extract_order_id(question)
+    question = _build_llm_question(
+        order_id=order_id,
+        action=action,
+    )
 
-    if order_id is None:
-        return {
-            "status": "error",
-            "message": "Please provide an Order ID.",
-        }
 
-    normalized_question = question.lower()
+    if action == "similar_shipments":
 
-    if "similar" in normalized_question:
         shipments = find_similar_shipments(
             order_id=order_id,
             limit=5,
@@ -56,11 +62,7 @@ def run_copilot(question: str) -> dict:
             question,
         )
 
-    if (
-        "prediction" in normalized_question
-        or "risk" in normalized_question
-        or "probability" in normalized_question
-    ):
+    if action == "prediction":
         prediction = get_prediction(order_id)
 
         if prediction is None:

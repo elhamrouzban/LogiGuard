@@ -321,3 +321,32 @@ def test_get_single_shipment_returns_saved_order():
             db.close()
 
 
+def test_copilot_endpoint_accepts_structured_request(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "src.api.main.run_copilot",
+        lambda order_id, action: {
+            "status": "success",
+            "intent": action,
+            "order_id": order_id,
+        },
+    )
+
+    response = client.post(
+        "/copilot",
+        json={
+            "order_id": 900002,
+            "action": "prediction",
+        },
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+
+    assert result["status"] == "success"
+    assert result["intent"] == "prediction"
+    assert result["order_id"] == 900002
+
+

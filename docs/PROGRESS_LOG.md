@@ -1119,3 +1119,22 @@ python -m pip install -e ".[dev]"
   - exposing technical fields unless requested
 - Added `tests/test_llm.py` with a mocked Gemini client so CI does not depend on live external API availability.
 - Verified full regression suite: 27 passed, 2 warnings.
+
+
+
+### Refactored Copilot API to structured order/action requests
+
+- Replaced question-based Copilot requests with structured inputs:
+  - `order_id`
+  - `action`
+- Removed the need to extract Order ID from free-text questions.
+- Removed text-keyword routing from the Copilot.
+- Added deterministic action routing for:
+  - `prediction`
+  - `shipment_status`
+  - `similar_shipments`
+- Kept LLM question generation internal to the Copilot and separate from routing.
+- Updated the Streamlit Copilot UI to send structured requests directly to FastAPI.
+- Updated Copilot tests to use the new `order_id + action` interface.
+- Mocked grounded LLM generation in Copilot unit tests so tests do not depend on Gemini availability.
+- Added FastAPI test coverage for the structured `/copilot` request contract.
