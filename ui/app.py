@@ -1035,7 +1035,26 @@ with operations_colilot_tab:
                     )
 
                     if response.ok:
-                        st.json(response.json())
+                        result = response.json()
+
+                        answer = result.get("answer")
+
+                        if answer:
+                            st.markdown(answer)
+                        else:
+                            st.info(
+                                "Copilot returned validated evidence "
+                                "without a generated explanation."
+                            )
+
+                        with st.expander("Validated Evidence"):
+                            evidence = {
+                                key: value
+                                for key, value in result.items()
+                                if key != "answer"
+                            }
+
+                            st.json(evidence)
 
                     else:
                         st.error(

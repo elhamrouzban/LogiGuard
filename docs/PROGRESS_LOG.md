@@ -1138,3 +1138,19 @@ python -m pip install -e ".[dev]"
 - Updated Copilot tests to use the new `order_id + action` interface.
 - Mocked grounded LLM generation in Copilot unit tests so tests do not depend on Gemini availability.
 - Added FastAPI test coverage for the structured `/copilot` request contract.
+
+
+### Completed structured Operations Copilot with grounded LLM responses
+
+- Refactored Copilot requests from free-text parsing to structured `order_id + action`.
+- Removed regex-based Order ID extraction and keyword-based intent routing.
+- Added deterministic routing for prediction, shipment status, and similar shipments.
+- Kept natural-language question generation internal and limited to LLM explanation.
+- Added shared business `risk_level` enrichment for prediction, shipment status, and similar shipments.
+- Verified all three Copilot actions end-to-end through Streamlit, FastAPI, database tools, validator, and Gemini.
+- Confirmed Gemini receives validated evidence only.
+- Preserved structured evidence when the external LLM is unavailable.
+- Updated the Streamlit UI to render the Copilot answer as human-readable Markdown.
+- Added a separate "Validated Evidence" expander containing structured evidence without duplicating the generated answer.
+- Updated Copilot/API tests for the structured request contract and mocked external LLM calls.
+- Final regression: 28 tests passed with 2 non-blocking warnings.

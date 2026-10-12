@@ -29,7 +29,7 @@ def _build_llm_question(
     return questions[action]
 
 
-def run_copilot(order_id: str, action: str) -> dict:
+def run_copilot(order_id: int, action: str) -> dict:
 
     question = _build_llm_question(
         order_id=order_id,
@@ -52,6 +52,16 @@ def run_copilot(order_id: str, action: str) -> dict:
                     "No similar shipments were found."
                 ),
             }
+
+        shipments = [
+        {
+        **shipment,
+        "risk_level": get_risk_level(
+            shipment["late_risk_probability"]
+        ),
+        }
+    for shipment in shipments
+]
 
         return _validated_result({
             "status": "success",
@@ -95,16 +105,20 @@ def run_copilot(order_id: str, action: str) -> dict:
             "message": "Shipment not found.",
         }
 
+    shipment = dict(shipment)
+    shipment["risk_level"] = get_risk_level(
+        shipment["late_risk_probability"]
+    )
+
     return _validated_result(
-        {
+    {
         "status": "success",
         "intent": "shipment_status",
         "order_id": order_id,
         "shipment": shipment,
-        },
-        question,
-    )
-
+    },
+    question,
+)
 
 
 def _validated_result(
