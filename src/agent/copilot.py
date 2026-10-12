@@ -1,5 +1,5 @@
 
-import re
+
 from src.agent.validator import validate_copilot_result
 
 from src.agent.tools import (
@@ -7,30 +7,38 @@ from src.agent.tools import (
     get_prediction,
     get_shipment,
 )
+from src.shared.risk import get_risk_level
+from src.agent.llm import generate_grounded_response
+
+def _build_llm_question(
+    order_id: int,
+    action: str,
+) -> str:
+    questions = {
+        "prediction": (
+            f"What is the risk prediction for order {order_id}?"
+        ),
+        "shipment_status": (
+            f"What is the shipment status for order {order_id}?"
+        ),
+        "similar_shipments": (
+            f"Find similar shipments to order {order_id}."
+        ),
+    }
+
+    return questions[action]
 
 
-def extract_order_id(question: str) -> int | None:
-    match = re.search(r"\b\d+\b", question)
+def run_copilot(order_id: int, action: str) -> dict:
 
-    if match is None:
-        return None
+    question = _build_llm_question(
+        order_id=order_id,
+        action=action,
+    )
 
-    return int(match.group())
 
+    if action == "similar_shipments":
 
-def run_copilot(question: str) -> dict:
-
-    order_id = extract_order_id(question)
-
-    if order_id is None:
-        return {
-            "status": "error",
-            "message": "Please provide an Order ID.",
-        }
-
-    normalized_question = question.lower()
-
-    if "similar" in normalized_question:
         shipments = find_similar_shipments(
             order_id=order_id,
             limit=5,
@@ -45,18 +53,26 @@ def run_copilot(question: str) -> dict:
                 ),
             }
 
+        shipments = [
+        {
+        **shipment,
+        "risk_level": get_risk_level(
+            shipment["late_risk_probability"]
+        ),
+        }
+    for shipment in shipments
+]
+
         return _validated_result({
             "status": "success",
             "intent": "similar_shipments",
             "order_id": order_id,
             "similar_shipments": shipments,
-        })
+            },
+            question,
+        )
 
-    if (
-        "prediction" in normalized_question
-        or "risk" in normalized_question
-        or "probability" in normalized_question
-    ):
+    if action == "prediction":
         prediction = get_prediction(order_id)
 
         if prediction is None:
@@ -66,12 +82,19 @@ def run_copilot(question: str) -> dict:
                 "message": "Prediction not found.",
             }
 
+        prediction = dict(prediction)
+        prediction["risk_level"] = get_risk_level(
+            prediction["late_risk_probability"]
+        )
+
         return _validated_result({
             "status": "success",
             "intent": "prediction",
             "order_id": order_id,
             "prediction": prediction,
-        })
+            },
+            question,
+        )
 
     shipment = get_shipment(order_id)
 
@@ -82,16 +105,26 @@ def run_copilot(question: str) -> dict:
             "message": "Shipment not found.",
         }
 
-    return _validated_result({
+    shipment = dict(shipment)
+    shipment["risk_level"] = get_risk_level(
+        shipment["late_risk_probability"]
+    )
+
+    return _validated_result(
+    {
         "status": "success",
         "intent": "shipment_status",
         "order_id": order_id,
         "shipment": shipment,
-    })
+    },
+    question,
+)
 
 
-
-def _validated_result(result: dict) -> dict:
+def _validated_result(
+    result: dict,
+    question: str,
+) -> dict:
     validation = validate_copilot_result(result)
 
     if not validation["valid"]:
@@ -100,5 +133,15 @@ def _validated_result(result: dict) -> dict:
             "message": "Copilot response failed validation.",
             "validation_errors": validation["errors"],
         }
+
+    try:
+        result["answer"] = generate_grounded_response(
+            question=question,
+            evidence=result,
+        )
+    except Exception:
+        # Gemini is optional. Validated Copilot evidence
+        # must remain available if the external LLM fails.
+        pass
 
     return result

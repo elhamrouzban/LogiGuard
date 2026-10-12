@@ -5,6 +5,8 @@ import pandas as pd
 import requests
 import streamlit as st
 
+from src.shared.risk import get_risk_level
+
 
 st.set_page_config(
     page_title="LogiGuard AI",
@@ -17,19 +19,6 @@ API_URL = os.getenv(
     "API_URL",
     "http://127.0.0.1:8000",
 )
-
-
-def get_risk_level(probability: float) -> str:
-    if probability < 0.40:
-        return "No Risk"
-
-    if probability < 0.60:
-        return "Low Risk"
-
-    if probability < 0.80:
-        return "Medium Risk"
-
-    return "High Risk"
 
 
 def get_risk_emoji(risk_level: str) -> str:
@@ -1028,33 +1017,44 @@ with operations_colilot_tab:
                 )
 
             else:
-                if action == "Risk Prediction":
-                    question = (
-                        "What is the risk prediction "
-                        f"for order {selected_order_id}?"
-                    )
 
-                elif action == "Shipment Status":
-                    question = (
-                        "What is the shipment status "
-                        f"for order {selected_order_id}?"
-                    )
-
-                else:
-                    question = (
-                        "Find similar shipments "
-                        f"to order {selected_order_id}."
-                    )
+                action_mapping = {
+                    "Risk Prediction": "prediction",
+                    "Shipment Status": "shipment_status",
+                    "Similar Shipments": "similar_shipments",
+                }
 
                 try:
                     response = requests.post(
                         f"{API_URL}/copilot",
-                        json={"question": question},
+                        json={
+                            "order_id": selected_order_id,
+                            "action": action_mapping[action],
+                        },
                         timeout=30,
                     )
 
                     if response.ok:
-                        st.json(response.json())
+                        result = response.json()
+
+                        answer = result.get("answer")
+
+                        if answer:
+                            st.markdown(answer)
+                        else:
+                            st.info(
+                                "Copilot returned validated evidence "
+                                "without a generated explanation."
+                            )
+
+                        with st.expander("Validated Evidence"):
+                            evidence = {
+                                key: value
+                                for key, value in result.items()
+                                if key != "answer"
+                            }
+
+                            st.json(evidence)
 
                     else:
                         st.error(

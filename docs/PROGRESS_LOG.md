@@ -1056,3 +1056,101 @@ Verified in the Streamlit UI:
 - valid Order ID selection;
 - controlled Copilot action selection;
 - successful Copilot request and response.
+
+
+## Project Dependency Management
+
+### Completed
+
+- Added a root-level `pyproject.toml`.
+- Defined the LogiGuard package metadata and supported Python version.
+- Added direct runtime dependencies for:
+  - FastAPI and Pydantic
+  - PostgreSQL / SQLAlchemy
+  - pandas / joblib / scikit-learn / XGBoost
+  - Streamlit / requests / Uvicorn
+  - python-dotenv
+  - Google Gemini SDK (`google-genai`)
+- Added `pytest` as a development dependency.
+- Verified editable installation with:
+
+```bash
+python -m pip install -e ".[dev]"
+- Verified the complete test suite after dependency configuration.
+
+### Shared risk-level business logic
+
+- Moved the UI-only risk-level mapping into `src/business/risk.py`.
+- Added shared `get_risk_level(probability)` logic for:
+  - No Risk: < 0.40
+  - Low Risk: 0.40–<0.60
+  - Medium Risk: 0.60–<0.80
+  - High Risk: >= 0.80
+- Updated the Streamlit UI to import and use the shared business rule.
+- Added boundary tests in `tests/test_risk.py`.
+- Full regression suite passes: 27 passed, 2 warnings.
+
+
+### Added business risk level to Copilot prediction evidence
+
+- Reused the shared `get_risk_level()` business rule inside the Operations Copilot.
+- Enriched prediction evidence with a deterministic `risk_level` derived from `late_risk_probability`.
+- Risk levels remain presentation/business labels:
+  - No Risk: < 0.40
+  - Low Risk: 0.40–<0.60
+  - Medium Risk: 0.60–<0.80
+  - High Risk: >= 0.80
+- The ML model remains a binary Late / Not Late classifier.
+- Added Copilot test coverage to verify that prediction responses include a valid business risk level.
+
+### Added grounded Gemini response service
+
+- Added `src/agent/llm.py` as the Gemini integration layer for grounded Copilot responses.
+- Configured Gemini access through `GEMINI_API_KEY`.
+- Added a grounded prompt that restricts responses to validated evidence only.
+- Updated the prompt for logistics operations users so responses prioritize:
+  - business risk level
+  - late-delivery risk percentage when useful
+  - whether the order needs operational attention
+- Explicitly prevented the LLM from:
+  - inventing facts or causes
+  - changing numeric values
+  - deriving its own risk level
+  - exposing technical fields unless requested
+- Added `tests/test_llm.py` with a mocked Gemini client so CI does not depend on live external API availability.
+- Verified full regression suite: 27 passed, 2 warnings.
+
+
+
+### Refactored Copilot API to structured order/action requests
+
+- Replaced question-based Copilot requests with structured inputs:
+  - `order_id`
+  - `action`
+- Removed the need to extract Order ID from free-text questions.
+- Removed text-keyword routing from the Copilot.
+- Added deterministic action routing for:
+  - `prediction`
+  - `shipment_status`
+  - `similar_shipments`
+- Kept LLM question generation internal to the Copilot and separate from routing.
+- Updated the Streamlit Copilot UI to send structured requests directly to FastAPI.
+- Updated Copilot tests to use the new `order_id + action` interface.
+- Mocked grounded LLM generation in Copilot unit tests so tests do not depend on Gemini availability.
+- Added FastAPI test coverage for the structured `/copilot` request contract.
+
+
+### Completed structured Operations Copilot with grounded LLM responses
+
+- Refactored Copilot requests from free-text parsing to structured `order_id + action`.
+- Removed regex-based Order ID extraction and keyword-based intent routing.
+- Added deterministic routing for prediction, shipment status, and similar shipments.
+- Kept natural-language question generation internal and limited to LLM explanation.
+- Added shared business `risk_level` enrichment for prediction, shipment status, and similar shipments.
+- Verified all three Copilot actions end-to-end through Streamlit, FastAPI, database tools, validator, and Gemini.
+- Confirmed Gemini receives validated evidence only.
+- Preserved structured evidence when the external LLM is unavailable.
+- Updated the Streamlit UI to render the Copilot answer as human-readable Markdown.
+- Added a separate "Validated Evidence" expander containing structured evidence without duplicating the generated answer.
+- Updated Copilot/API tests for the structured request contract and mocked external LLM calls.
+- Final regression: 28 tests passed with 2 non-blocking warnings.
