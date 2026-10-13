@@ -1237,3 +1237,23 @@ FastAPI:   http://localhost:8000
 
 ### Next Step
 - Integrate Prometheus into Docker Compose.
+
+
+## 2026-10-13 — Prometheus Integration
+
+### Completed
+- Added Prometheus service to Docker Compose.
+- Configured FastAPI metrics scraping every 15 seconds.
+- Added persistent Prometheus storage using a named volume.
+- Verified Prometheus starts and the FastAPI target is UP.
+
+### Decisions / Changes
+- Prometheus accesses FastAPI through Docker networking (`api:8000`).
+- Prometheus UI is available at http://localhost:9090.
+- Metrics are collected from `/metrics`.
+
+### Blockers / Open Questions
+- Grafana dashboard and alerting remain pending.
+
+### Next Step
+- Integrate Grafana.
