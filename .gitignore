@@ -12,6 +12,7 @@ venv/
 .DS_Store
 
 docker_seed.sql
+monitoring/reports/
 
 # metadata files
 *.egg-info/
