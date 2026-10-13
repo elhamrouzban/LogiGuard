@@ -1,0 +1,11 @@
+groups:
+  - name: logiguard-alerts
+    rules:
+      - alert: LogiGuardAPIDown
+        expr: up{job="logiguard-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LogiGuard API is unavailable"
+          description: "Prometheus cannot scrape the LogiGuard API for over one minute."

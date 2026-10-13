@@ -1280,3 +1280,25 @@ FastAPI:   http://localhost:8000
 
 ### Next Step
 - Configure and test a monitoring alert.
+
+
+## 2026-10-13 — Prometheus API Availability Alert
+
+### Completed
+- Added LogiGuardAPIDown alert rule.
+- Configured Prometheus to load alerts.yml.
+- Set alert to fire after 1 minute of API unavailability.
+- Tested alert by stopping the API container.
+- Verified alert transitions to Firing.
+- Restarted API and verified recovery.
+
+### Decisions / Changes
+- Used Prometheus alert rules for API availability monitoring.
+- Kept alert configuration version-controlled.
+- External notifications are not configured.
+
+### Blockers / Open Questions
+- Evidently ML/data drift monitoring remains pending.
+
+### Next Step
+- Implement Evidently drift monitoring.
