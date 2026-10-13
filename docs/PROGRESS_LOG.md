@@ -1257,3 +1257,26 @@ FastAPI:   http://localhost:8000
 
 ### Next Step
 - Integrate Grafana.
+
+
+
+## 2026-10-13 — Grafana Monitoring Dashboard
+
+### Completed
+- Added Grafana to Docker Compose.
+- Configured automatic Prometheus datasource provisioning.
+- Added automatic dashboard provisioning.
+- Created LogiGuard API Monitoring dashboard.
+- Added panels for traffic, error rate, P95 latency, and memory usage.
+- Verified Grafana dashboard loads successfully.
+
+### Decisions / Changes
+- Used file-based provisioning for reproducible setup.
+- Stored Grafana data in a persistent Docker volume.
+- Kept dashboard configuration under version control.
+
+### Blockers / Open Questions
+- Alerting and Evidently drift monitoring remain pending.
+
+### Next Step
+- Configure and test a monitoring alert.
