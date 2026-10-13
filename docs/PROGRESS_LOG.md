@@ -1214,3 +1214,26 @@ docker compose up --build
 The main application is available at:
 Streamlit: http://localhost:8501
 FastAPI:   http://localhost:8000
+
+
+
+## 2026-10-13 — FastAPI Metrics
+
+### Completed
+- Added Prometheus instrumentation to FastAPI.
+- Exposed GET /metrics.
+- Added HTTP request count, latency, status and in-progress metrics.
+- Verified Python process resource metrics.
+- Verified metrics inside Docker.
+- Added an automated metrics endpoint test.
+
+### Decisions / Changes
+- Used prometheus-fastapi-instrumentator.
+- Kept instrumentation separate from prediction and Copilot logic.
+- Excluded /metrics from request instrumentation.
+
+### Blockers / Open Questions
+- Prometheus and Grafana integration remain pending.
+
+### Next Step
+- Integrate Prometheus into Docker Compose.

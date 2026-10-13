@@ -350,3 +350,13 @@ def test_copilot_endpoint_accepts_structured_request(
     assert result["order_id"] == 900002
 
 
+def test_metrics_endpoint():
+    client.get("/health")
+
+    response = client.get("/metrics")
+
+    assert response.status_code == 200
+    assert "http_requests_total" in response.text
+    assert "http_request_duration_seconds" in response.text
+    assert "http_requests_inprogress" in response.text
+    assert 'handler="/health"' in response.text

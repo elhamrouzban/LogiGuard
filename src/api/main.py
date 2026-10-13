@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from typing import Literal
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.database.connection import SessionLocal, get_db
 from src.database.orm_models import Order, Prediction, RawOrder
@@ -20,6 +21,11 @@ app = FastAPI(
     title="LogiGuard API",
     version="0.3.0",
 )
+
+Instrumentator(
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=["/metrics"],
+).instrument(app).expose(app, include_in_schema=False)
 
 
 class OrderInput(BaseModel):
