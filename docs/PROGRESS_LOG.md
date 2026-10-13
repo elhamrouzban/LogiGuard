@@ -1154,3 +1154,63 @@ python -m pip install -e ".[dev]"
 - Added a separate "Validated Evidence" expander containing structured evidence without duplicating the generated answer.
 - Updated Copilot/API tests for the structured request contract and mocked external LLM calls.
 - Final regression: 28 tests passed with 2 non-blocking warnings.
+
+
+## Local Docker Runtime
+### Goal
+
+Containerize the complete LogiGuard AI runtime so Streamlit, FastAPI, PostgreSQL, the prediction model, and the Operations Copilot can run together locally.
+
+### Completed
+
+- Added a Dockerfile using Python 3.14.
+- Added Docker Compose orchestration for:
+  - PostgreSQL (`db`)
+  - FastAPI (`api`)
+  - Streamlit (`ui`)
+- Added PostgreSQL health checking before API startup.
+- Configured automatic database table creation when the API starts.
+- Configured container-to-container networking:
+  - UI → `http://api:8000`
+  - API → `db:5432`
+- Exposed local ports:
+  - Streamlit → `8501`
+  - FastAPI → `8000`
+  - PostgreSQL → `5433`
+- Added persistent PostgreSQL storage using the `postgres_data` named volume.
+- Added `PYTHONPATH=/app` inside the application image.
+- Included the model registry and model artifacts required by `models/current_model.json`.
+- Passed database configuration and Gemini credentials through environment variables.
+- Added `.dockerignore` to exclude unnecessary and sensitive files from the Docker build context.
+- Added `docker_seed.sql` to `.gitignore` because it was used only for local test-data migration.
+- Verified the FastAPI health endpoint.
+- Verified PostgreSQL table creation inside Docker.
+- Verified database persistence across container restarts.
+- Verified the full Streamlit → FastAPI → model → PostgreSQL workflow.
+- Submitted a new raw order and verified prediction and persistence.
+- Verified the new order appears in Dashboard and Order Details.
+- Verified Operations Copilot against Dockerized data.
+- Updated Dashboard and Order Details Order-ID fields to searchable selections.
+- Refined Streamlit UI styling without changing application behavior or architecture.
+- Final regression suite: 28 tests passed with 3 non-blocking warnings.
+- Docker Compose configuration validation completed successfully.
+
+### Technical Decisions
+
+- The prediction model and Operations Copilot remain inside the FastAPI runtime rather than separate services.
+- PostgreSQL runs inside Docker to keep the local runtime self-contained.
+- Streamlit and FastAPI use the same application image with different Compose commands.
+- Docker PostgreSQL uses host port `5433` because the local PostgreSQL installation uses port `5432`.
+- PostgreSQL data is preserved using a named Docker volume.
+- The current Docker setup is intentionally simple and production-like; development bind mounts were not added.
+
+### Result
+
+The complete local product path can now be started with:
+
+```bash
+docker compose up --build
+
+The main application is available at:
+Streamlit: http://localhost:8501
+FastAPI:   http://localhost:8000
