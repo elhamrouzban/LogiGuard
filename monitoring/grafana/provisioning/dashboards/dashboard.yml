@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: LogiGuard
+    orgId: 1
+    folder: LogiGuard
+    type: file
+    disableDeletion: false
+    editable: false
+    options:
+      path: /var/lib/grafana/dashboards

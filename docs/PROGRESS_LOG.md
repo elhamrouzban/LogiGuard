@@ -1214,3 +1214,142 @@ docker compose up --build
 The main application is available at:
 Streamlit: http://localhost:8501
 FastAPI:   http://localhost:8000
+
+
+
+## 2026-10-13 — FastAPI Metrics
+
+### Completed
+- Added Prometheus instrumentation to FastAPI.
+- Exposed GET /metrics.
+- Added HTTP request count, latency, status and in-progress metrics.
+- Verified Python process resource metrics.
+- Verified metrics inside Docker.
+- Added an automated metrics endpoint test.
+
+### Decisions / Changes
+- Used prometheus-fastapi-instrumentator.
+- Kept instrumentation separate from prediction and Copilot logic.
+- Excluded /metrics from request instrumentation.
+
+### Blockers / Open Questions
+- Prometheus and Grafana integration remain pending.
+
+### Next Step
+- Integrate Prometheus into Docker Compose.
+
+
+## 2026-10-13 — Prometheus Integration
+
+### Completed
+- Added Prometheus service to Docker Compose.
+- Configured FastAPI metrics scraping every 15 seconds.
+- Added persistent Prometheus storage using a named volume.
+- Verified Prometheus starts and the FastAPI target is UP.
+
+### Decisions / Changes
+- Prometheus accesses FastAPI through Docker networking (`api:8000`).
+- Prometheus UI is available at http://localhost:9090.
+- Metrics are collected from `/metrics`.
+
+### Blockers / Open Questions
+- Grafana dashboard and alerting remain pending.
+
+### Next Step
+- Integrate Grafana.
+
+
+
+## 2026-10-13 — Grafana Monitoring Dashboard
+
+### Completed
+- Added Grafana to Docker Compose.
+- Configured automatic Prometheus datasource provisioning.
+- Added automatic dashboard provisioning.
+- Created LogiGuard API Monitoring dashboard.
+- Added panels for traffic, error rate, P95 latency, and memory usage.
+- Verified Grafana dashboard loads successfully.
+
+### Decisions / Changes
+- Used file-based provisioning for reproducible setup.
+- Stored Grafana data in a persistent Docker volume.
+- Kept dashboard configuration under version control.
+
+### Blockers / Open Questions
+- Alerting and Evidently drift monitoring remain pending.
+
+### Next Step
+- Configure and test a monitoring alert.
+
+
+## 2026-10-13 — Prometheus API Availability Alert
+
+### Completed
+- Added LogiGuardAPIDown alert rule.
+- Configured Prometheus to load alerts.yml.
+- Set alert to fire after 1 minute of API unavailability.
+- Tested alert by stopping the API container.
+- Verified alert transitions to Firing.
+- Restarted API and verified recovery.
+
+### Decisions / Changes
+- Used Prometheus alert rules for API availability monitoring.
+- Kept alert configuration version-controlled.
+- External notifications are not configured.
+
+### Blockers / Open Questions
+- Evidently ML/data drift monitoring remains pending.
+
+### Next Step
+- Implement Evidently drift monitoring.
+
+
+## 2026-10-13 — Evidently Drift Monitoring
+
+### Completed
+- Installed Evidently 0.7.23.
+- Implemented batch drift monitoring in pipelines/monitor_drift.py.
+- Reconstructed reference data from the chronological training split.
+- Loaded current orders and predictions from PostgreSQL.
+- Generated an HTML report covering input drift, prediction drift, and data quality.
+- Added an INSUFFICIENT DATA warning for fewer than 30 current records.
+- Successfully generated and manually verified the HTML report.
+
+### Verification
+- Active model: 2026-10-02_10-36
+- Reference records: 5000
+- Current records: 6
+- HTML warning displayed correctly.
+- Evidently import and pip check succeeded.
+- Last full regression: 29 passed, 2 warnings (before drift implementation).
+
+### Limitations
+- Current sample is too small for reliable drift conclusions.
+- Training dataset version is not stored in model metadata.
+- Actual delivery labels are unavailable for production quality monitoring.
+
+### Next Step
+- Add automated tests for drift monitoring.
+
+
+## 2026-10-13 — Evidently Monitoring Tests
+
+### Completed
+- Added tests/test_monitor_drift.py.
+- Verified active model metadata and 14 feature columns.
+- Added a PostgreSQL integration test for current monitoring data.
+- Verified prediction probabilities remain between 0 and 1.
+
+### Testing
+- Focused tests: 2 passed.
+- Full regression: 31 passed, 4 warnings.
+- Warnings originate from third-party libraries.
+
+### Limitations
+- Integration test requires PostgreSQL and stored predictions.
+- Automated HTML report generation is not yet tested.
+
+### Next Step
+- Final monitoring review and remaining project requirements.
+
+
