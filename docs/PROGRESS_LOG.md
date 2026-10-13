@@ -1331,3 +1331,25 @@ FastAPI:   http://localhost:8000
 ### Next Step
 - Add automated tests for drift monitoring.
 
+
+## 2026-10-13 — Evidently Monitoring Tests
+
+### Completed
+- Added tests/test_monitor_drift.py.
+- Verified active model metadata and 14 feature columns.
+- Added a PostgreSQL integration test for current monitoring data.
+- Verified prediction probabilities remain between 0 and 1.
+
+### Testing
+- Focused tests: 2 passed.
+- Full regression: 31 passed, 4 warnings.
+- Warnings originate from third-party libraries.
+
+### Limitations
+- Integration test requires PostgreSQL and stored predictions.
+- Automated HTML report generation is not yet tested.
+
+### Next Step
+- Final monitoring review and remaining project requirements.
+
+
