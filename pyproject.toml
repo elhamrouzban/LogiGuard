@@ -26,6 +26,7 @@ dependencies = [
     "python-dotenv==1.2.4",
     "google-genai==2.29.0",
     "prometheus-fastapi-instrumentator==8.1.0",
+    "evidently==0.7.23",
 ]
 
 [project.optional-dependencies]

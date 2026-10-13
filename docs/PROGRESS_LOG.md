@@ -1302,3 +1302,32 @@ FastAPI:   http://localhost:8000
 
 ### Next Step
 - Implement Evidently drift monitoring.
+
+
+## 2026-10-13 — Evidently Drift Monitoring
+
+### Completed
+- Installed Evidently 0.7.23.
+- Implemented batch drift monitoring in pipelines/monitor_drift.py.
+- Reconstructed reference data from the chronological training split.
+- Loaded current orders and predictions from PostgreSQL.
+- Generated an HTML report covering input drift, prediction drift, and data quality.
+- Added an INSUFFICIENT DATA warning for fewer than 30 current records.
+- Successfully generated and manually verified the HTML report.
+
+### Verification
+- Active model: 2026-10-02_10-36
+- Reference records: 5000
+- Current records: 6
+- HTML warning displayed correctly.
+- Evidently import and pip check succeeded.
+- Last full regression: 29 passed, 2 warnings (before drift implementation).
+
+### Limitations
+- Current sample is too small for reliable drift conclusions.
+- Training dataset version is not stored in model metadata.
+- Actual delivery labels are unavailable for production quality monitoring.
+
+### Next Step
+- Add automated tests for drift monitoring.
+
