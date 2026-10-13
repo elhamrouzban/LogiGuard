@@ -1353,3 +1353,17 @@ FastAPI:   http://localhost:8000
 - Final monitoring review and remaining project requirements.
 
 
+## 2026-10-13 — Initial GitHub Actions CI
+
+### Completed
+- Added GitHub Actions CI workflow configuration.
+- Configured Python 3.14 and PostgreSQL 17.
+- Added dependency installation, database initialization, and pytest execution.
+- Verified model artifacts are tracked in Git.
+
+### Verification
+- Local regression: 31 tests passed.
+- GitHub Actions execution pending.
+
+### Next Step
+- Push the CI branch and verify the workflow runs successfully.
