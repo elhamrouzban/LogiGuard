@@ -1499,3 +1499,13 @@ FastAPI:   http://localhost:8000
 - Runtime dependency and application imports inside image: passed.
 - Previous regression: 32 passed, 4 warnings.
 - GitHub Actions Docker build: pending verification.
+
+
+### Training Dataset Traceability
+- Added automatic recording of the training CSV filename and path in model metadata for future manual training runs.
+- Verified dataset lookup: `order_level_clean_2026-10-02_10-19.csv` (65,752 rows).
+- Ruff: PASS.
+- Full regression: PASS.
+- No model training, promotion, or active model changes.
+
+

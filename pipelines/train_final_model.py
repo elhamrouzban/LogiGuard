@@ -19,6 +19,33 @@ from src.features.preprocessing import (
 )
 
 
+def get_training_data_path() -> Path:
+    run_dirs = sorted(
+        path
+        for path in PROCESSED_DATA_DIR.iterdir()
+        if path.is_dir()
+    )
+
+    if not run_dirs:
+        raise FileNotFoundError(
+            "No processed dataset found. Run "
+            "'python -m pipelines.prepare_data' first."
+        )
+
+    latest_run_dir = run_dirs[-1]
+    csv_files = list(
+        latest_run_dir.glob("order_level_clean_*.csv")
+    )
+
+    if len(csv_files) != 1:
+        raise ValueError(
+            f"Expected exactly one processed dataset in "
+            f"{latest_run_dir}, found {len(csv_files)}."
+        )
+
+    return csv_files[0]
+
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = PROJECT_ROOT / "models"
 PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
@@ -38,34 +65,8 @@ MODEL_PARAMS = {
 
 
 def load_latest_processed_data() -> pd.DataFrame:
-    run_dirs = sorted(
-        [
-            path
-            for path in PROCESSED_DATA_DIR.iterdir()
-            if path.is_dir()
-        ]
-    )
-
-    if not run_dirs:
-        raise FileNotFoundError(
-            "No processed dataset found. Run "
-            "'python -m pipelines.prepare_data' first."
-        )
-
-    latest_run_dir = run_dirs[-1]
-
-    csv_files = list(
-        latest_run_dir.glob("order_level_clean_*.csv")
-    )
-
-    if len(csv_files) != 1:
-        raise ValueError(
-            f"Expected exactly one processed dataset in "
-            f"{latest_run_dir}, found {len(csv_files)}."
-        )
-
     return pd.read_csv(
-        csv_files[0],
+        get_training_data_path(),
         parse_dates=["order date (DateOrders)"],
     )
 
@@ -93,6 +94,7 @@ def main():
     # ---------------------------------------------------------
     # 2. Aggregate item-level data to order level
     # ---------------------------------------------------------
+    training_data_path = get_training_data_path()
     order_df = load_latest_processed_data()
     # ---------------------------------------------------------
     # 3. Chronological train / validation / test split
@@ -209,6 +211,10 @@ def main():
         "run_id": run_timestamp,
         "model_name": "Stage 2 XGBoost",
         "trained_at": datetime.now().astimezone().isoformat(),
+        "training_data_file": training_data_path.name,
+        "training_data_path": str(
+            training_data_path.relative_to(PROJECT_ROOT)
+        ),
         "threshold": SELECTED_THRESHOLD,
         "hyperparameters": MODEL_PARAMS,
         "feature_columns": feature_columns,
