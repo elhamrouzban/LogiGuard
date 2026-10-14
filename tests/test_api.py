@@ -1,18 +1,8 @@
-from pathlib import Path
-import sys
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-
 from fastapi.testclient import TestClient
 
 from src.api.main import app
 from src.database.connection import SessionLocal
 from src.database.orm_models import Order, Prediction
-
 
 client = TestClient(app)
 

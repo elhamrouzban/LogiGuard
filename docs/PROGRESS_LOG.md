@@ -1353,3 +1353,193 @@ FastAPI:   http://localhost:8000
 - Final monitoring review and remaining project requirements.
 
 
+## 2026-10-13 — Initial GitHub Actions CI
+
+### Completed
+- Added GitHub Actions CI workflow configuration.
+- Configured Python 3.14 and PostgreSQL 17.
+- Added dependency installation, database initialization, and pytest execution.
+- Verified model artifacts are tracked in Git.
+
+### Verification
+- Local regression: 31 tests passed.
+- GitHub Actions execution pending.
+
+### Next Step
+- Push the CI branch and verify the workflow runs successfully.
+
+
+
+## 2026-10-14 — Agent Tools Integration Test Isolation
+
+### Completed
+- Replaced dependency on existing order 900002 with two synthetic orders and predictions.
+- Preserved real PostgreSQL integration coverage for Agent Tools.
+- Added transaction rollback to prevent test data persistence.
+- Kept production code unchanged.
+
+### Local Verification
+- Agent Tools: 3 passed.
+- Full regression: 28 passed, 3 failed, 4 warnings.
+- Remaining failures: two Copilot tests and one Drift Monitoring test, all dependent on pre-existing database records.
+
+### Next
+- Make Copilot tests independent of existing database records.
+
+
+## 2026-10-14 — Copilot Test Isolation
+
+### Completed
+- Removed Copilot test dependency on pre-existing order 900002.
+- Mocked Agent Tool responses while preserving real routing and validation.
+- Strengthened similar shipments test to require a successful result.
+- Kept production Copilot code unchanged.
+
+### Verification
+- Copilot tests: 4 passed, 1 warning.
+- Full regression on logiguard_test: 30 passed, 1 failed, 4 warnings.
+- Remaining failure: test_current_data_matches_model_features (no stored predictions for the active model).
+
+### Next
+- Isolate Drift Monitoring test data.
+
+
+## 2026-10-14 — Drift Monitoring Test Isolation
+
+### Completed
+- Removed dependency on existing predictions in PostgreSQL.
+- Created a synthetic Order and Prediction for the active model.
+- Preserved real PostgreSQL integration testing.
+- Used transaction rollback to prevent test data persistence.
+- Kept production code unchanged.
+
+### Verification
+- Drift Monitoring: 2 passed, 2 warnings.
+- Full regression on logiguard_test: 31 passed.
+- GitHub Actions verification: pending.
+
+### Next
+- Confirm green GitHub Actions CI.
+
+
+## 2026-10-14 — Training Pipeline Ruff Cleanup
+
+### Completed
+- Removed six unused sklearn.metrics imports.
+- Removed unused current_model_path variable.
+- Kept training logic and model artifacts unchanged.
+
+### Verification
+- Ruff (train_final_model.py): All checks passed.
+- Full regression (logiguard_test): 31 passed, 4 warnings.
+
+### Next
+- Review remaining Ruff findings.
+
+
+## 2026-10-14 — Database Table Registration Ruff Cleanup
+
+### Completed
+- Replaced direct ORM class imports with an intentional module import.
+- Preserved SQLAlchemy model registration before create_all().
+- Kept database schema and application behavior unchanged.
+
+### Verification
+- Ruff: All checks passed.
+- PostgreSQL test database: orders, predictions, raw_orders verified.
+- Full regression on logiguard_test: 31 passed, 4 warnings.
+
+### Next
+- Resolve remaining Ruff E402 findings in tests.
+
+## 2026-10-14 — Ruff Cleanup and Prediction Smoke Test
+
+### Completed
+- Removed unnecessary sys.path modifications from API tests.
+- Converted prediction smoke script into a discoverable pytest test.
+- Preserved real model inference in the smoke test.
+- Configured Ruff to exclude research notebooks.
+- Kept Ruff in report-only mode; no automatic fixes.
+
+### Local Verification
+- Ruff: All checks passed.
+- API tests: 7 passed, 2 warnings.
+- Prediction smoke test: 1 passed.
+- Full regression on logiguard_test: 32 passed, 4 warnings.
+
+### Next
+- Add Ruff lint check to GitHub Actions.
+
+
+## 2026-10-14 — Ruff CI Quality Gate
+
+### Completed
+- Added Ruff lint check to GitHub Actions.
+- Configured Ruff in report-only mode without automatic fixes.
+- Preserved existing PostgreSQL and pytest CI steps.
+
+### Verification
+- Local Ruff: All checks passed.
+- Pytest collection: 32 tests.
+- Previous full regression: 32 passed, 4 warnings.
+- End-to-end prediction, database persistence, and Copilot: passed.
+- Synthetic E2E order cleanup: verified.
+- GitHub Actions: pending verification.
+
+## 2026-10-14 — Docker Build CI Check
+
+### Completed
+- Added Docker image build verification to GitHub Actions.
+- Kept Docker build separate from deployment.
+- Preserved existing Ruff, PostgreSQL, and pytest steps.
+
+### Local Verification
+- pip check: No broken requirements found.
+- Docker build --no-cache: passed.
+- Runtime dependency and application imports inside image: passed.
+- Previous regression: 32 passed, 4 warnings.
+- GitHub Actions Docker build: pending verification.
+
+
+### Training Dataset Traceability
+- Added automatic recording of the training CSV filename and path in model metadata for future manual training runs.
+- Verified dataset lookup: `order_level_clean_2026-10-02_10-19.csv` (65,752 rows).
+- Ruff: PASS.
+- Full regression: PASS.
+- No model training, promotion, or active model changes.
+
+
+### Active Model Dataset Provenance
+- Recorded the developer-confirmed training dataset in the active model metadata.
+- Dataset: `data/processed/2026-10-02_10-19/order_level_clean_2026-10-02_10-19.csv`
+- Verified dataset SHA256 against the metadata: PASS.
+- Existing model artifacts, threshold, and active model pointer remain unchanged.
+- No retraining or model promotion performed.
+
+
+### DVC Dataset Versioning
+- Initialized DVC 3.67.1.
+- Added DVC tracking for `data/processed/2026-10-02_10-19/order_level_clean_2026-10-02_10-19.csv`.
+- Updated `.gitignore` to exclude processed CSV files while allowing DVC tracking files.
+- Verified `dvc status`: Data and pipelines are up to date.
+- Dataset remains local; no DVC remote storage configured.
+- No model retraining, promotion, or active model changes.
+
+
+### MLflow Historical Model Registration
+- Installed MLflow 3.17.1 with an independent local SQLite tracking database.
+- Registered active model `2026-10-02_10-36` under experiment `LogiGuard-XGBoost`.
+- MLflow run ID: `0168c6643a10446188ab6a079b41fbf1`.
+- Recorded hyperparameters, validation/test metrics, and training dataset provenance.
+- Verified stored MLflow data: PASS.
+- MLflow registration test: PASS.
+- Full regression and Ruff: PASS.
+- No retraining, promotion, or changes to the active model.
+
+git add pyproject.toml .gitignore \
+  pipelines/register_existing_model_mlflow.py \
+  tests/test_mlflow_registration.py \
+  docs/PROGRESS_LOG.md
+
+git diff --cached --name-only
+git diff --cached --check

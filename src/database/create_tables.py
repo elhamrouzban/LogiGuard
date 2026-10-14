@@ -1,5 +1,6 @@
+
 from src.database.connection import Base, engine
-from src.database.orm_models import Order, Prediction, RawOrder
+from src.database import orm_models  # noqa: F401
 
 
 def create_tables():

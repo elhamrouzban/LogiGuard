@@ -32,7 +32,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest==9.1.1",
+    "ruff==0.14.3",
+    "mlflow==3.17.1",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+extend-exclude = ["notebooks"]

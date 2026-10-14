@@ -20,7 +20,7 @@ monitoring/reports/
 # Local datasets
 data/raw/*
 data/interim/*
-data/processed/*
+data/processed/**/*.csv
 
 # Keep folder structure in Git
 !data/raw/.gitkeep
@@ -36,3 +36,11 @@ notebooks/project_screenshots
 
 # Model artifacts
 models/*.joblib
+
+# Local MLflow tracking data
+mlruns/
+
+# Local MLflow storage
+mlflow.db
+mlflow.db-*
+mlartifacts/
