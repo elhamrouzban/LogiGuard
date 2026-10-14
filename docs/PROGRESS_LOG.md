@@ -1485,3 +1485,17 @@ FastAPI:   http://localhost:8000
 - End-to-end prediction, database persistence, and Copilot: passed.
 - Synthetic E2E order cleanup: verified.
 - GitHub Actions: pending verification.
+
+## 2026-10-14 — Docker Build CI Check
+
+### Completed
+- Added Docker image build verification to GitHub Actions.
+- Kept Docker build separate from deployment.
+- Preserved existing Ruff, PostgreSQL, and pytest steps.
+
+### Local Verification
+- pip check: No broken requirements found.
+- Docker build --no-cache: passed.
+- Runtime dependency and application imports inside image: passed.
+- Previous regression: 32 passed, 4 warnings.
+- GitHub Actions Docker build: pending verification.
