@@ -1524,3 +1524,22 @@ FastAPI:   http://localhost:8000
 - Verified `dvc status`: Data and pipelines are up to date.
 - Dataset remains local; no DVC remote storage configured.
 - No model retraining, promotion, or active model changes.
+
+
+### MLflow Historical Model Registration
+- Installed MLflow 3.17.1 with an independent local SQLite tracking database.
+- Registered active model `2026-10-02_10-36` under experiment `LogiGuard-XGBoost`.
+- MLflow run ID: `0168c6643a10446188ab6a079b41fbf1`.
+- Recorded hyperparameters, validation/test metrics, and training dataset provenance.
+- Verified stored MLflow data: PASS.
+- MLflow registration test: PASS.
+- Full regression and Ruff: PASS.
+- No retraining, promotion, or changes to the active model.
+
+git add pyproject.toml .gitignore \
+  pipelines/register_existing_model_mlflow.py \
+  tests/test_mlflow_registration.py \
+  docs/PROGRESS_LOG.md
+
+git diff --cached --name-only
+git diff --cached --check

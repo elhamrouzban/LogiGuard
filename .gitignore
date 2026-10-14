@@ -36,3 +36,11 @@ notebooks/project_screenshots
 
 # Model artifacts
 models/*.joblib
+
+# Local MLflow tracking data
+mlruns/
+
+# Local MLflow storage
+mlflow.db
+mlflow.db-*
+mlartifacts/
