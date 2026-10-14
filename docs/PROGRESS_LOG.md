@@ -1469,3 +1469,19 @@ FastAPI:   http://localhost:8000
 
 ### Next
 - Add Ruff lint check to GitHub Actions.
+
+
+## 2026-10-14 — Ruff CI Quality Gate
+
+### Completed
+- Added Ruff lint check to GitHub Actions.
+- Configured Ruff in report-only mode without automatic fixes.
+- Preserved existing PostgreSQL and pytest CI steps.
+
+### Verification
+- Local Ruff: All checks passed.
+- Pytest collection: 32 tests.
+- Previous full regression: 32 passed, 4 warnings.
+- End-to-end prediction, database persistence, and Copilot: passed.
+- Synthetic E2E order cleanup: verified.
+- GitHub Actions: pending verification.
