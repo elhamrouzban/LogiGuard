@@ -1,18 +1,9 @@
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
-
 import json
-
 import joblib
-from sklearn.metrics import (
-    accuracy_score,
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-    roc_auc_score,
-)
+
 from xgboost import XGBClassifier
 from src.models.evaluation import evaluate_classifier
 
@@ -94,9 +85,6 @@ def main():
     model_path = run_dir / model_filename
     preprocessor_path = run_dir / preprocessor_filename
     metadata_path = run_dir / metadata_filename
-
-    # Pointer to the currently selected model version
-    current_model_path = MODEL_DIR / "current_model.json"
 
     # ---------------------------------------------------------
     # 1. Load and clean historical raw data

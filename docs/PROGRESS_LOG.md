@@ -1420,3 +1420,18 @@ FastAPI:   http://localhost:8000
 
 ### Next
 - Confirm green GitHub Actions CI.
+
+
+## 2026-10-14 — Training Pipeline Ruff Cleanup
+
+### Completed
+- Removed six unused sklearn.metrics imports.
+- Removed unused current_model_path variable.
+- Kept training logic and model artifacts unchanged.
+
+### Verification
+- Ruff (train_final_model.py): All checks passed.
+- Full regression (logiguard_test): 31 passed, 4 warnings.
+
+### Next
+- Review remaining Ruff findings.
