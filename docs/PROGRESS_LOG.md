@@ -1367,3 +1367,21 @@ FastAPI:   http://localhost:8000
 
 ### Next Step
 - Push the CI branch and verify the workflow runs successfully.
+
+
+
+## 2026-10-14 — Agent Tools Integration Test Isolation
+
+### Completed
+- Replaced dependency on existing order 900002 with two synthetic orders and predictions.
+- Preserved real PostgreSQL integration coverage for Agent Tools.
+- Added transaction rollback to prevent test data persistence.
+- Kept production code unchanged.
+
+### Local Verification
+- Agent Tools: 3 passed.
+- Full regression: 28 passed, 3 failed, 4 warnings.
+- Remaining failures: two Copilot tests and one Drift Monitoring test, all dependent on pre-existing database records.
+
+### Next
+- Make Copilot tests independent of existing database records.
