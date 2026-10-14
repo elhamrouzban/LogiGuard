@@ -1509,3 +1509,11 @@ FastAPI:   http://localhost:8000
 - No model training, promotion, or active model changes.
 
 
+### Active Model Dataset Provenance
+- Recorded the developer-confirmed training dataset in the active model metadata.
+- Dataset: `data/processed/2026-10-02_10-19/order_level_clean_2026-10-02_10-19.csv`
+- Verified dataset SHA256 against the metadata: PASS.
+- Existing model artifacts, threshold, and active model pointer remain unchanged.
+- No retraining or model promotion performed.
+
+
