@@ -1402,3 +1402,21 @@ FastAPI:   http://localhost:8000
 
 ### Next
 - Isolate Drift Monitoring test data.
+
+
+## 2026-10-14 — Drift Monitoring Test Isolation
+
+### Completed
+- Removed dependency on existing predictions in PostgreSQL.
+- Created a synthetic Order and Prediction for the active model.
+- Preserved real PostgreSQL integration testing.
+- Used transaction rollback to prevent test data persistence.
+- Kept production code unchanged.
+
+### Verification
+- Drift Monitoring: 2 passed, 2 warnings.
+- Full regression on logiguard_test: 31 passed.
+- GitHub Actions verification: pending.
+
+### Next
+- Confirm green GitHub Actions CI.
