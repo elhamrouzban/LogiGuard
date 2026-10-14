@@ -1517,3 +1517,10 @@ FastAPI:   http://localhost:8000
 - No retraining or model promotion performed.
 
 
+### DVC Dataset Versioning
+- Initialized DVC 3.67.1.
+- Added DVC tracking for `data/processed/2026-10-02_10-19/order_level_clean_2026-10-02_10-19.csv`.
+- Updated `.gitignore` to exclude processed CSV files while allowing DVC tracking files.
+- Verified `dvc status`: Data and pipelines are up to date.
+- Dataset remains local; no DVC remote storage configured.
+- No model retraining, promotion, or active model changes.

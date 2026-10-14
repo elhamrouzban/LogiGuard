@@ -20,7 +20,7 @@ monitoring/reports/
 # Local datasets
 data/raw/*
 data/interim/*
-data/processed/*
+data/processed/**/*.csv
 
 # Keep folder structure in Git
 !data/raw/.gitkeep
