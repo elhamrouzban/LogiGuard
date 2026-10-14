@@ -1385,3 +1385,20 @@ FastAPI:   http://localhost:8000
 
 ### Next
 - Make Copilot tests independent of existing database records.
+
+
+## 2026-10-14 — Copilot Test Isolation
+
+### Completed
+- Removed Copilot test dependency on pre-existing order 900002.
+- Mocked Agent Tool responses while preserving real routing and validation.
+- Strengthened similar shipments test to require a successful result.
+- Kept production Copilot code unchanged.
+
+### Verification
+- Copilot tests: 4 passed, 1 warning.
+- Full regression on logiguard_test: 30 passed, 1 failed, 4 warnings.
+- Remaining failure: test_current_data_matches_model_features (no stored predictions for the active model).
+
+### Next
+- Isolate Drift Monitoring test data.
