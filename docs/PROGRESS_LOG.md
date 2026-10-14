@@ -1435,3 +1435,19 @@ FastAPI:   http://localhost:8000
 
 ### Next
 - Review remaining Ruff findings.
+
+
+## 2026-10-14 — Database Table Registration Ruff Cleanup
+
+### Completed
+- Replaced direct ORM class imports with an intentional module import.
+- Preserved SQLAlchemy model registration before create_all().
+- Kept database schema and application behavior unchanged.
+
+### Verification
+- Ruff: All checks passed.
+- PostgreSQL test database: orders, predictions, raw_orders verified.
+- Full regression on logiguard_test: 31 passed, 4 warnings.
+
+### Next
+- Resolve remaining Ruff E402 findings in tests.
