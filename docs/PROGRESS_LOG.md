@@ -1451,3 +1451,21 @@ FastAPI:   http://localhost:8000
 
 ### Next
 - Resolve remaining Ruff E402 findings in tests.
+
+## 2026-10-14 — Ruff Cleanup and Prediction Smoke Test
+
+### Completed
+- Removed unnecessary sys.path modifications from API tests.
+- Converted prediction smoke script into a discoverable pytest test.
+- Preserved real model inference in the smoke test.
+- Configured Ruff to exclude research notebooks.
+- Kept Ruff in report-only mode; no automatic fixes.
+
+### Local Verification
+- Ruff: All checks passed.
+- API tests: 7 passed, 2 warnings.
+- Prediction smoke test: 1 passed.
+- Full regression on logiguard_test: 32 passed, 4 warnings.
+
+### Next
+- Add Ruff lint check to GitHub Actions.
