@@ -1,7 +1,7 @@
 # Project Status — LogiGuard AI
 
-**Last updated:** 2026-10-15  
-**Current phase:** Final documentation, demonstration, and capstone delivery  
+**Last updated:** 2026-10-15
+**Current phase:** Final documentation, demonstration, and capstone delivery
 **Current working branch:** `feature/final-documentation`
 
 ## Project Overview
