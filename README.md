@@ -4,6 +4,14 @@
 
 LogiGuard is an AI engineering capstone that helps logistics operators identify potentially late orders, prioritize shipment exceptions, and investigate them through a constrained copilot. It is a decision-support prototype, not a live fleet-tracking or autonomous dispatch system.
 
+## Demo Video
+
+Watch the LogiGuard AI demo to see the complete workflow,
+including order submission, late-delivery risk prediction,
+operations insights, and API monitoring.
+
+[Watch or Download Demo Video](docs/demo/logiguard-demo.mp4)
+
 ## 1. Dataset and data preparation
 
 The historical training source is **DataCo SMART SUPPLY CHAIN FOR BIG DATA ANALYSIS**, Mendeley Data v5 ([source](https://data.mendeley.com/datasets/8gx2fvg2k6/5), [DOI](https://doi.org/10.17632/8gx2fvg2k6.5), CC BY 4.0).
