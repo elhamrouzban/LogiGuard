@@ -1,211 +1,73 @@
-# Capstone Backlog / TODO
+# LogiGuard AI — Delivery Backlog
 
-**Project:** AI Logistics Exception Management & Operations Copilot  
-**Purpose:** Living task tracker for all future work  
-**Rule:** `PROJECT_STATUS.md` contains only the current phase and next few actions.
+**Updated:** 2026-10-15
+**Purpose:** Current checklist for capstone delivery. Completed items reflect the implementation and verification recorded in the project; deferred items are not presented as implemented.
+**Current priority:** Stable demo, recorded backup, presentation, and final delivery checks.
 
----
+## Completed — Data and ML
 
-# Completed Data / Modeling Work
+- [x] Obtain and validate the historical DataCo dataset; clean and aggregate item-level records to one order per row.
+- [x] Implement chronological train/validation/test splitting and leakage-aware features.
+- [x] Compare Logistic Regression, Decision Tree, Random Forest, and XGBoost; tune candidate models.
+- [x] Select Stage 2 XGBoost, with operating threshold `0.40`, and evaluate on held-out test data.
+- [x] Implement versioned processed-data preparation: `python -m pipelines.prepare_data`.
+- [x] Implement versioned baseline and final training pipelines.
+- [x] Keep training separate from explicit manual model promotion, with validation ROC-AUC gate >= 0.75.
+- [x] Preserve `models/current_model.json` as the sole current-model pointer.
+- [x] Record training CSV filename/path automatically for future manual training runs.
+- [x] Record developer-confirmed dataset provenance and verified SHA256 for active run `2026-10-02_10-36`.
 
-- [x] Validate raw DataCo data
-- [x] Clean raw data
-- [x] Aggregate item-level data to order level
-- [x] Implement chronological train / validation / test split
-- [x] Implement reusable feature engineering
-- [x] Implement categorical encoding and numerical scaling
-- [x] Train Logistic Regression baseline
-- [x] Train Decision Tree
-- [x] Train Random Forest
-- [x] Train XGBoost
-- [x] Tune Decision Tree
-- [x] Tune Random Forest
-- [x] Perform two-stage XGBoost tuning
-- [x] Compare candidate models against baseline
-- [x] Select Stage 2 XGBoost
-- [x] Select operating threshold `0.40`
-- [x] Evaluate selected model on untouched test set
-- [x] Perform `order_hour` ablation analysis
-- [x] Implement versioned processed-data pipeline
-- [x] Refactor baseline training to use processed data
-- [x] Version baseline model, preprocessor, and metadata
-- [x] Refactor final-model training to use processed data
-- [x] Version final model, preprocessor, and metadata
-- [x] Separate training from model promotion
-- [x] Implement `promote_model.py`
-- [x] Add validation ROC-AUC promotion quality gate
-- [x] Maintain `models/current_model.json` as promoted-model pointer
+## Completed — Product and Runtime
 
----
+- [x] Build FastAPI inference endpoints for order-level and raw item-level requests.
+- [x] Validate raw requests and aggregate raw items into the prediction-time feature representation.
+- [x] Persist raw orders, processed orders, and predictions in PostgreSQL.
+- [x] Provide read-only shipment, order, prediction, and raw-order retrieval APIs.
+- [x] Implement a Streamlit shipment-risk dashboard and selected-shipment detail view.
+- [x] Implement the constrained Operations Copilot with approved read-only tools and deterministic validation.
+- [x] Run API, UI, PostgreSQL, Prometheus, and Grafana through Docker Compose.
 
-# Current Priority — FastAPI + PostgreSQL
+## Completed — MLOps, Monitoring, and CI
 
-- [x] Create FastAPI application
-- [x] Implement `GET /health`
-- [x] Implement initial `POST /predict`
-- [x] Create initial Pydantic prediction request model
-- [ ] Finalize realistic operational order input schema
-- [ ] Derive aggregate model features from new order input
-- [ ] Reuse promoted model bundle for inference
-- [ ] Persist incoming order in PostgreSQL
-- [ ] Persist prediction in PostgreSQL
-- [ ] Include model run/version information in stored prediction
-- [ ] Finalize typed prediction response
-- [ ] Add API error handling
-- [ ] Add end-to-end API → model → database integration test
+- [x] Track the active processed training CSV with DVC; verify `dvc status` is up to date.
+- [x] Register the existing active model's hyperparameters, validation/test metrics, and dataset provenance as an MLflow **historical import**.
+- [x] Keep MLflow's local SQLite tracking store separate from the operational PostgreSQL database.
+- [x] Instrument the FastAPI service with Prometheus request/latency/error metrics.
+- [x] Provision Grafana's API monitoring dashboard and an API-down Prometheus alert.
+- [x] Implement manual Evidently reports covering feature and prediction-distribution drift.
+- [x] Flag drift reports with fewer than 30 current rows as insufficient data.
+- [x] Run Ruff, PostgreSQL-backed pytest, and Docker image build in GitHub Actions.
+- [x] Verify local full regression: **33 passed, 4 third-party warnings**; Ruff passed.
 
----
+## Completed — Documentation
 
-# Training Pipeline Cleanup
+- [x] Write the project README covering setup, manual data/model lifecycle, Docker, API, MLOps, monitoring, and CI.
+- [x] Update `PROJECT_STATUS.md` for the current delivery phase.
+- [x] Preserve `docs/PROGRESS_LOG.md` as chronological history.
+- [x] Review and reconcile the delivery backlog and record newer architecture decisions in the decision log.
 
-- [ ] Remove duplicate/redundant evaluation code in `train_final_model.py`
-- [ ] Add formal model-load pytest
-- [ ] Add prediction-probability validity pytest
-- [ ] Add automated test for required model features
-- [ ] Add automated leakage-column protection test
+## Remaining — Final Delivery (Priority)
 
----
+- [ ] Verify a stable demonstration scenario against the current Streamlit UI and API using controlled demo data.
+- [ ] Prepare and record a short, successful backup demo video; avoid exposing keys or personal data.
+- [ ] Prepare final English presentation slides, including the business problem, data leakage controls, model results, architecture, product demo, MLOps, and limitations.
+- [ ] Rehearse the presentation with a timer and verify the expected presentation duration.
+- [ ] Review the final README and supporting diagrams/screenshots against the actual product behavior.
+- [ ] Review any remaining stale planning/handoff documents for misleading *current-status* claims; preserve historical decisions and progress entries.
+- [ ] Check final GitHub Actions results and complete the documentation PR/merge.
 
-# PostgreSQL
+## Known Limitations / Deferred, Not Completed
 
-- [x] Create initial database connection layer
-- [x] Create initial ORM models
-- [x] Create order table structure
-- [x] Create prediction table structure
-- [ ] Align model-version field with `model_run_id`
-- [ ] Remove hard-coded database credentials from source code
-- [ ] Add environment-based database configuration
-- [ ] Add PostgreSQL integration test
+- [ ] Configure a DVC remote so another machine can retrieve the dataset using DVC alone; currently the tracked content is local.
+- [ ] Add actual outcome labels and enough recent cases to assess production predictive quality; historical test metrics do not establish production accuracy.
+- [ ] Configure external alert notifications; the API-down Prometheus rule exists but no email/Slack integration is configured.
+- [ ] Schedule or automate drift reporting and establish a validated ML-specific alert policy; reports currently run manually.
+- [ ] Add automatic experiment logging to **future** training runs if needed; current MLflow record is a historical import, not a training-time run.
+- [ ] Implement Prefect orchestration if subsequently required; it is an original plan, not verified as implemented.
+- [ ] Decide whether further optional tooling (Black, pre-commit, an MLflow service or registry, advanced CI quality gates) provides enough value to justify scope expansion.
 
----
+## Beyond Capstone Scope
 
-# MLOps
+Real customer TMS/ERP integration, carrier APIs, authenticated multi-tenant deployment, real-time GPS/AIS, routing/ETA optimization, paid data integrations, and public cloud deployment remain future ideas, not claims about the current system.
 
-## Prefect
-
-- [ ] Wrap current data preparation and training stages in Prefect
-- [ ] Document manual retraining flow
-
-## MLflow
-
-- [ ] Set up local MLflow
-- [ ] Log model parameters
-- [ ] Log validation/test metrics
-- [ ] Log selected artifacts
-- [ ] Connect model runs to experiment tracking
-
-## DVC
-
-- [ ] Initialize DVC
-- [ ] Version raw dataset
-- [ ] Version processed datasets
-- [ ] Decide final model-artifact ownership between DVC and MLflow
-
----
-
-# Engineering Foundation
-
-- [ ] Finalize `pyproject.toml`
-- [ ] Configure Ruff
-- [ ] Configure Black
-- [ ] Configure pre-commit
-- [ ] Create GitHub Actions CI
-- [ ] Run tests in CI
-- [ ] Run model/data quality checks in CI
-
----
-
-# Product Layer
-
-## Streamlit
-
-- [ ] Create minimal Streamlit dashboard
-- [ ] Display shipment/order risk
-- [ ] Add high-risk filtering
-- [ ] Add selected-order detail view
-- [ ] Connect Streamlit to FastAPI and PostgreSQL
-
-## Operations Copilot
-
-- [ ] Finalize no-cost LLM strategy
-- [ ] Implement read-only prediction tool
-- [ ] Implement read-only shipment/order tool
-- [ ] Implement historical comparison tool
-- [ ] Enforce tool allow-list
-- [ ] Implement structured Pydantic output
-- [ ] Add deterministic validator
-- [ ] Prevent unsupported factual claims
-
----
-
-# Docker / Runtime
-
-- [ ] Create API Dockerfile
-- [ ] Create Docker Compose
-- [ ] Add PostgreSQL service
-- [ ] Add Prometheus service
-- [ ] Add Grafana service
-- [ ] Add MLflow service if useful
-- [ ] Verify local startup from documented commands
-
----
-
-# Monitoring / Drift / Alerting
-
-- [ ] Instrument request count
-- [ ] Instrument request latency
-- [ ] Instrument error rate
-- [ ] Build minimal Grafana dashboard
-- [ ] Create Evidently reference/current comparison
-- [ ] Monitor important feature drift
-- [ ] Monitor prediction distribution drift
-- [ ] Configure at least one alert
-
----
-
-# Documentation / Finalization
-
-- [ ] Finalize README
-- [ ] Document installation/setup
-- [ ] Document training
-- [ ] Document API
-- [ ] Document Docker Compose
-- [ ] Document monitoring
-- [ ] Document retraining workflow
-- [ ] Document limitations
-- [ ] Finalize architecture diagram
-- [ ] Update `docs/HANDOFF.md`
-- [ ] Finalize `docs/RISK_REGISTER.md`
-- [ ] Finalize `PROJECT_STATUS.md`
-
----
-
-# Presentation / Demo
-
-- [ ] Prepare 10–15 minute presentation
-- [ ] Explain business problem and target user
-- [ ] Explain data and leakage problem
-- [ ] Show baseline/model comparison
-- [ ] Explain architecture and engineering decisions
-- [ ] Demo prediction workflow
-- [ ] Demo Streamlit dashboard
-- [ ] Demo Operations Copilot
-- [ ] Demo monitoring/drift/alert
-- [ ] Present limitations
-- [ ] Rehearse presentation
-- [ ] Store final slides in `presentation/`
-
----
-
-# Future / Post-Capstone Ideas
-
-- [ ] Real customer TMS/ERP integration
-- [ ] Company-specific retraining
-- [ ] Carrier API integration
-- [ ] HVCC integration if access is confirmed
-- [ ] AIS/vessel trajectory modeling
-- [ ] Real-time fleet GPS
-- [ ] ETA prediction
-- [ ] Route optimization
-- [ ] Authentication and multi-tenancy
-- [ ] Public cloud deployment
+**Safety rule:** No monitoring task, CI check, or MLOps tool automatically retrains a model, changes its threshold, or promotes a candidate. Model promotion requires a manual decision.
