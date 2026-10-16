@@ -29,7 +29,7 @@ data/processed/**/*.csv
 
 # Keep data documentation in Git
 !data/README.md
-presentation
+/presentation/
 
 # Local exploratory notebooks
 notebooks/project_screenshots
