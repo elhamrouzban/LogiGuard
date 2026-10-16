@@ -12,6 +12,11 @@ operations insights, and API monitoring.
 
 [Watch or Download Demo Video](docs/demo/logiguard-demo.mp4)
 
+## Presentation
+
+[Download LogiGuard AI Presentation (PowerPoint)](docs/presentation/LogiGuard_Presentation.pptx)
+
+
 ## 1. Dataset and data preparation
 
 The historical training source is **DataCo SMART SUPPLY CHAIN FOR BIG DATA ANALYSIS**, Mendeley Data v5 ([source](https://data.mendeley.com/datasets/8gx2fvg2k6/5), [DOI](https://doi.org/10.17632/8gx2fvg2k6.5), CC BY 4.0).
